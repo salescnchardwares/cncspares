@@ -305,23 +305,10 @@ app.get('/contact', (req, res) => {
   res.render('contact', { settings, submitted: req.query.submitted === '1' });
 });
 
-app.post('/contact', upload.single('imageFile'), async (req, res) => {
+app.post('/contact', async (req, res) => {
   const { settings } = loadData();
   let uploadResult = null;
   let attachments = [];
-
-  if (req.file) {
-    try {
-      uploadResult = await uploadToCloudinary(req.file.buffer, req.file.originalname, settings);
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
-  if (uploadResult?.imageUrl) {
-    const attachment = await buildEmailAttachment(uploadResult.imageUrl, 'contact-upload.jpg');
-    if (attachment) attachments.push(attachment);
-  }
 
   const request = {
     id: `contact-${Date.now()}`,
