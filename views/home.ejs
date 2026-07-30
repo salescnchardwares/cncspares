@@ -23,17 +23,18 @@
     <section class="hero">
       <div class="container hero-card">
         <div class="hero-content">
-          <div class="hero-visual">
-            <% if (settings.companyLogoUrl) { %>
-              <img class="hero-logo" src="<%= settings.companyLogoUrl %>" alt="<%= settings.companyName %> logo" />
-            <% } else { %>
-            <% } %>
-          </div>
           <div>
             <h1>Reliable CNC spare parts sales and service for your machines.</h1>
             <p><%= settings.companyTagline %></p>
             <p>Share your requirement, and our team will respond with the right spare part guidance, service support, and availability details.</p>
           </div>
+        </div>
+        <div class="hero-side">
+          <% if (settings.companyLogoUrl) { %>
+            <div class="hero-logo-card">
+              <img class="hero-logo" src="<%= settings.companyLogoUrl %>" alt="<%= settings.companyName %> logo" />
+            </div>
+          <% } %>
         </div>
       </div>
     </section>

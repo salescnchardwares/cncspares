@@ -22,7 +22,7 @@
 
       <div class="card admin-card">
         <h3>Company Details</h3>
-        <form method="post" action="/admin/settings">
+        <form method="post" action="/admin/settings" enctype="multipart/form-data">
           <div class="admin-grid">
             <div>
               <label>Company Name</label>
@@ -68,6 +68,20 @@
               <label>Cloudinary Folder</label>
               <input name="cloudinaryFolder" value="<%= settings.cloudinaryFolder || '' %>" placeholder="cnc-spares" />
               <p class="small">You can paste your Cloudinary details here and use them for spare images.</p>
+            </div>
+          </div>
+          <div class="admin-grid" style="margin-top: 1rem;">
+            <div>
+              <label>Logo URL</label>
+              <input name="companyLogoUrl" value="<%= settings.companyLogoUrl || '' %>" placeholder="https://example.com/logo.png" />
+              <label>Upload Logo</label>
+              <input type="file" name="logoFile" accept="image/*" />
+            </div>
+            <div>
+              <% if (settings.companyLogoUrl) { %>
+                <label>Current Logo Preview</label>
+                <img src="<%= settings.companyLogoUrl %>" alt="Current company logo" style="max-width: 220px; max-height: 120px; object-fit: contain; border-radius: 12px; border: 1px solid #dde5ee;" />
+              <% } %>
             </div>
           </div>
           <div class="form-actions">

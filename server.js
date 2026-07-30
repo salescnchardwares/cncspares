@@ -36,10 +36,30 @@ app.use(session({
   cookie: { maxAge: 1000 * 60 * 60 * 8 }
 }));
 
+function isWritableDir(dirPath) {
+  try {
+    fs.mkdirSync(dirPath, { recursive: true });
+    fs.accessSync(dirPath, fs.constants.W_OK);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+function resolveStoragePath(filePath) {
+  if (process.env.VERCEL === '1') {
+    const relativePath = path.relative(__dirname, filePath) || path.basename(filePath);
+    return path.join('/tmp', 'cnc-spares', relativePath);
+  }
+
+  const dirPath = path.dirname(filePath);
+  return isWritableDir(dirPath) ? filePath : path.join('/tmp', 'cnc-spares', path.basename(filePath));
+}
+
 function ensureDataFiles() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(SPARES_FILE)) {
-    fs.writeFileSync(SPARES_FILE, JSON.stringify([
+    writeJson(SPARES_FILE, [
       {
         id: 'spare-1',
         title: 'Spindle Bearing Kit',
@@ -61,11 +81,11 @@ function ensureDataFiles() {
         details: 'Durable ball screw assembly for smooth axis movement. Recommended for refurbishment and replacement jobs. Contact us for exact size and fitment details.',
         imagePublicId: 'cnc-spares/ball-screw'
       }
-    ], null, 2));
+    ]);
   }
-  if (!fs.existsSync(INQUIRIES_FILE)) fs.writeFileSync(INQUIRIES_FILE, JSON.stringify([], null, 2));
+  if (!fs.existsSync(INQUIRIES_FILE)) writeJson(INQUIRIES_FILE, []);
   if (!fs.existsSync(SETTINGS_FILE)) {
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify({
+    writeJson(SETTINGS_FILE, {
       companyName: 'CNC Hardwares',
       companyTagline: 'Your trusted source for CNC spare parts sales and service',
       companyDescription: 'CNC Hardwares specializes in CNC spare parts sales and service, helping workshops and manufacturing units keep their machines running with reliable support and quality components.',
@@ -83,20 +103,34 @@ function ensureDataFiles() {
       cloudinaryCloudName: '',
       cloudinaryUploadPreset: '',
       cloudinaryFolder: 'cnc-spares'
-    }, null, 2));
+    });
   }
 }
 
 function readJson(filePath, fallback) {
-  try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  } catch (error) {
-    return fallback;
+  const candidates = [filePath, resolveStoragePath(filePath)];
+  for (const candidate of candidates) {
+    try {
+      if (fs.existsSync(candidate)) {
+        return JSON.parse(fs.readFileSync(candidate, 'utf8'));
+      }
+    } catch (error) {
+      // ignore and try the next candidate
+    }
   }
+  return fallback;
 }
 
 function writeJson(filePath, data) {
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+  const targetPath = resolveStoragePath(filePath);
+  try {
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.writeFileSync(targetPath, JSON.stringify(data, null, 2));
+    return targetPath;
+  } catch (error) {
+    console.error(`Failed to write ${filePath}:`, error);
+    return targetPath;
+  }
 }
 
 function loadData() {
@@ -472,9 +506,24 @@ app.post('/admin/spares/delete', (req, res) => {
   res.redirect('/admin/spares');
 });
 
-app.post('/admin/settings', (req, res) => {
+app.post('/admin/settings', upload.single('logoFile'), async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
   const current = loadData().settings;
+  let logoUrl = req.body.companyLogoUrl || current.companyLogoUrl || '';
+  let logoPublicId = current.companyLogoPublicId || '';
+
+  if (req.file) {
+    try {
+      const uploadResult = await uploadToCloudinary(req.file.buffer, req.file.originalname, current);
+      if (uploadResult?.imageUrl) {
+        logoUrl = uploadResult.imageUrl;
+        logoPublicId = uploadResult.imagePublicId;
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   const settings = {
     ...current,
     companyName: req.body.companyName,
@@ -491,7 +540,9 @@ app.post('/admin/settings', (req, res) => {
     mailFrom: req.body.mailFrom,
     cloudinaryCloudName: req.body.cloudinaryCloudName,
     cloudinaryUploadPreset: req.body.cloudinaryUploadPreset,
-    cloudinaryFolder: req.body.cloudinaryFolder
+    cloudinaryFolder: req.body.cloudinaryFolder,
+    companyLogoUrl: logoUrl,
+    companyLogoPublicId: logoPublicId
   };
   writeJson(SETTINGS_FILE, settings);
   res.redirect('/admin/company');
