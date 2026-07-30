@@ -1,0 +1,18 @@
+{
+  "analyticsEnabled": false,
+  "analyticsVisits": 64,
+  "companyName": "CNC Hardwares",
+  "companyTagline": "Your trusted source for CNC spare parts sales and service",
+  "companyDescription": "",
+  "companyAddress": "19A/7, Near RKS Forgings, Thottipalayam Pirivu, Coimbatore-641062.",
+  "companyPhone": "+91 93602 44928",
+  "companyEmail": "sales.cnchardwares@gmail.com",
+  "adminEmail": "sales.cnchardwares@gmail.com",
+  "smtpHost": "smtp.gmail.com",
+  "smtpUser": "sales.cnchardwares@gmail.com",
+  "smtpPass": "ajiy iiov xumn wdaf",
+  "mailFrom": "sales.cnchardwares@gmail.com",
+  "cloudinaryCloudName": "s3gcegwe",
+  "cloudinaryUploadPreset": "CNC Spare",
+  "cloudinaryFolder": ""
+}

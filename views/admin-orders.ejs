@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Orders | Admin</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/site.css" />
+  </head>
+  <body>
+    <div class="container" style="padding: 2rem 0 3rem;">
+      <div class="navbar" style="margin-bottom: 1rem;">
+        <div class="brand">Admin Dashboard</div>
+        <div class="nav-links">
+          <a class="btn btn-secondary admin-nav-btn" href="/admin/company">Company</a>
+          <a class="btn btn-secondary admin-nav-btn" href="/admin/spares">Spares</a>
+          <a class="btn btn-secondary admin-nav-btn" href="/admin/orders">Orders</a>
+          <a class="btn btn-secondary admin-nav-btn" href="/admin/password">Password</a>
+          <a class="btn btn-secondary admin-nav-btn" href="/admin/logout">Logout</a>
+        </div>
+      </div>
+
+      <div class="card admin-card">
+        <div class="admin-section-header">
+          <h3>Enquiries and Order Status</h3>
+          <a class="btn btn-secondary export-btn" href="/admin/export-orders">Export to CSV</a>
+        </div>
+        <table class="order-table">
+          <thead>
+            <tr>
+              <th>Order / Customer</th>
+              <th>Product</th>
+              <th>Status</th>
+              <th>Dates</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% inquiries.forEach(function(enquiry) { %>
+              <tr>
+                <td>
+                  <strong><%= enquiry.customerName %></strong><br />
+                  <span class="small">Phone: <%= enquiry.mobileNumber %></span><br />
+                  <span class="small">Email: <%= enquiry.emailId %></span><br />
+                  <span class="small">Company: <%= enquiry.companyName %></span><br />
+                  <span class="small">GSTIN: <%= enquiry.gstinNumber %></span>
+                </td>
+                <td>
+                  <strong><%= enquiry.spareTitle %></strong><br />
+                  <span class="small">Quantity: <%= enquiry.quantity %></span>
+                </td>
+                <td>
+                  <strong><%= enquiry.status %></strong>
+                  <form method="post" action="/admin/orders/<%= enquiry.id %>/status">
+                    <label>Update</label>
+                    <select name="status">
+                      <option value="Pending" <%= enquiry.status === 'Pending' ? 'selected' : '' %>>Pending</option>
+                      <option value="Confirmed" <%= enquiry.status === 'Confirmed' ? 'selected' : '' %>>Confirmed</option>
+                      <option value="Packed" <%= enquiry.status === 'Packed' ? 'selected' : '' %>>Packed</option>
+                      <option value="Completed" <%= enquiry.status === 'Completed' ? 'selected' : '' %>>Completed</option>
+                    </select>
+                    <div class="form-actions">
+                      <button class="btn btn-primary" type="submit">Update</button>
+                    </div>
+                  </form>
+                </td>
+                <td>
+                  <span class="small">Ordered: <%= enquiry.createdAt ? new Date(enquiry.createdAt).toLocaleString() : 'N/A' %></span><br />
+                  <span class="small">Updated: <%= enquiry.updatedAt ? new Date(enquiry.updatedAt).toLocaleString() : 'N/A' %></span>
+                </td>
+                <td>
+                  <form method="post" action="/admin/orders/delete" class="admin-inline-form">
+                    <input type="hidden" name="id" value="<%= enquiry.id %>" />
+                    <button class="btn btn-secondary" type="submit">Delete Order</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </body>
+</html>

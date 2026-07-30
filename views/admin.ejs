@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/site.css" />
+  </head>
+  <body>
+    <div class="container" style="padding: 2rem 0 3rem;">
+      <div class="navbar" style="margin-bottom: 1rem;">
+        <div class="brand">Admin Dashboard</div>
+        <div class="nav-links">
+          <a class="btn btn-secondary admin-nav-btn" href="/admin/company">Company</a>
+          <a class="btn btn-secondary admin-nav-btn" href="/admin/spares">Spares</a>
+          <a class="btn btn-secondary admin-nav-btn" href="/admin/orders">Orders</a>
+          <a class="btn btn-secondary admin-nav-btn" href="/admin/password">Password</a>
+          <a class="btn btn-secondary admin-nav-btn" href="/admin/logout">Logout</a>
+        </div>
+      </div>
+
+      <div class="card admin-card">
+        <h3>Welcome to Admin Dashboard</h3>
+        <p class="small">Use the navigation above to manage company details, spare parts, orders, and the admin password.</p>
+      </div>
+
+      <div class="card admin-card analytics-card">
+        <div class="analytics-header">
+          <div>
+            <h3>Website Traffic Analytics</h3>
+            <p class="small">Track website activity and turn analytics on or off manually.</p>
+          </div>
+          <form method="post" action="/admin/analytics-toggle" class="analytics-toggle-form">
+            <label class="toggle-switch">
+              <input type="checkbox" name="analyticsEnabled" <%= analyticsEnabled ? 'checked' : '' %> />
+              <span class="toggle-slider"></span>
+            </label>
+            <button class="btn btn-primary" type="submit">Save</button>
+          </form>
+        </div>
+
+        <div class="analytics-grid">
+          <div class="analytics-metric">
+            <span class="metric-label">Status</span>
+            <strong><%= analyticsEnabled ? 'Enabled' : 'Disabled' %></strong>
+          </div>
+          <div class="analytics-metric">
+            <span class="metric-label">Total Visits</span>
+            <strong><%= analyticsVisits %></strong>
+          </div>
+          <div class="analytics-metric">
+            <span class="metric-label">Tracking Mode</span>
+            <strong>Manual</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

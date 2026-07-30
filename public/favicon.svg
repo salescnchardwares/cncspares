@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+  <!-- Left wrench tool -->
+  <path d="M 50 80 Q 50 50 80 50 Q 110 50 110 80 Q 110 110 80 110 Q 70 110 65 105" fill="none" stroke="#2d0a4e" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 70 105 L 85 120" stroke="#2d0a4e" stroke-width="16" stroke-linecap="round"/>
+  
+  <!-- Right wrench tool -->
+  <path d="M 190 80 Q 190 50 220 50 Q 250 50 250 80 Q 250 110 220 110 Q 210 110 205 105" fill="none" stroke="#2d0a4e" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 210 115 L 225 130" stroke="#2d0a4e" stroke-width="16" stroke-linecap="round"/>
+  
+  <!-- Connecting element -->
+  <circle cx="150" cy="80" r="8" fill="#2d0a4e"/>
+</svg>

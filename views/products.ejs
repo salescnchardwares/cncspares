@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Products | <%= settings.companyName %></title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/site.css" />
+  </head>
+  <body>
+    <header>
+      <div class="container navbar">
+        <a href="/" class="brand"><%= settings.companyName %></a>
+        <div class="nav-links">
+          <a href="/">Home</a>
+          <a href="/products">Products</a>
+          <a href="/#about">About Us</a>
+          <a href="/contact">Contact Us</a>
+        </div>
+      </div>
+    </header>
+
+    <section class="section">
+      <div class="container">
+        <h2>Products & Services</h2>
+        <p class="muted">Browse our full list of industrial products and engineering support services.</p>
+        <div class="services-grid">
+          <% services.forEach(function(service) { %>
+            <div class="card service-card reveal">
+              <h3><%= service.title %></h3>
+              <p><%= service.description %></p>
+            </div>
+          <% }) %>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2>All Products</h2>
+        <div class="grid">
+          <% spares.forEach(function(spare) { %>
+            <div class="card spare-card reveal">
+              <% if (spare.imageSrc) { %>
+                <img src="<%= spare.imageSrc %>" alt="<%= spare.imageAlt || spare.title %>" />
+              <% } %>
+              <span class="badge"><%= spare.category %></span>
+              <h3><%= spare.title %></h3>
+              <p><%= spare.details %></p>
+              <a class="btn btn-primary" href="/enquire/<%= spare.id %>">Enquire Now</a>
+            </div>
+          <% }) %>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="container footer-inner">
+        <div>
+          <h3><%= settings.companyName %></h3>
+          <p>Delivering dependable CNC spare parts sales and service for workshops and manufacturing units.</p>
+        
+        <div>
+          <p><strong>Contact</strong></p>
+          <p><%= settings.companyPhone %></p>
+          <p><%= settings.companyEmail %></p>
+        </div>
+      </div>
+      <div class="container footer-copyright">
+        <p>© <%= new Date().getFullYear() %> <%= settings.companyName %>. All rights reserved.</p>
+      </div>
+      <center>
+        </div>
+        <div class="footer-center">
+          <a class="footer-link" href="https://www.netcraftstudios.org" target="_blank" rel="noopener noreferrer">Developed by Netcraft Studio</a>
+        </div>
+    </center>
+    </footer>
+    <script>
+      window.scrollTo(0, 0);
+      window.addEventListener('load', function () {
+        window.scrollTo(0, 0);
+      });
+    </script>
+  </body>
+</html>

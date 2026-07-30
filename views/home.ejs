@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= settings.companyName %> | CNC Spare Enquiries</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <div class="container navbar">
+        <a href="/" class="brand"><%= settings.companyName %></a>
+        <div class="nav-links">
+          <a href="/">Home</a>
+          <a href="/products">Products</a>
+          <a href="#about">About Us</a>
+          <a href="/contact">Contact Us</a>
+        </div>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="container hero-card">
+        <div class="hero-content">
+          <div class="hero-visual">
+            <% if (settings.companyLogoUrl) { %>
+              <img class="hero-logo" src="<%= settings.companyLogoUrl %>" alt="<%= settings.companyName %> logo" />
+            <% } else { %>
+            <% } %>
+          </div>
+          <div>
+            <h1>Reliable CNC spare parts sales and service for your machines.</h1>
+            <p><%= settings.companyTagline %></p>
+            <p>Share your requirement, and our team will respond with the right spare part guidance, service support, and availability details.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+    <div class="container">
+      <% if (submitted) { %>
+        <div class="alert">Your enquiry has been received. We will contact you shortly.</div>
+      <% } %>
+    </div>
+
+    <section id="about" class="section">
+      <div class="container">
+        <div class="card spare-card reveal">
+          <h2>About <%= settings.companyName %></h2>
+          <p><%= settings.companyDescription %></p>
+          <div class="feature-strip">
+            <div><strong>Fast support</strong><br />Quick responses for urgent machine requirements.</div>
+            <div><strong>Reliable parts</strong><br />Quality components and dependable service.</div>
+            <div><strong>Affordable pricing</strong><br />Best price for spare parts without compromising quality.</div>
+          </div>
+          <p><strong>Address:</strong> <%= settings.companyAddress %></p>
+          <p><strong>Phone:</strong> <%= settings.companyPhone %></p>
+          <p><strong>Email:</strong> <%= settings.companyEmail %></p>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2>Products & Services</h2>
+        <p class="muted">We support CNC operations with dependable industrial components, repair assistance, and maintenance services.</p>
+        <div class="services-grid">
+          <% services.forEach(function(service) { %>
+            <div class="card service-card reveal">
+              <h3><%= service.title %></h3>
+              <p><%= service.description %></p>
+            </div>
+          <% }) %>
+        </div>
+      </div>
+    </section>
+
+    <section id="products" class="section">
+      <div class="container">
+        <h2>Featured Products</h2>
+        <p class="muted">Rates are not listed here. Please use the enquiry button below each part to request details and availability.</p>
+        <div class="grid">
+          <% spares.slice(0, 3).forEach(function(spare) { %>
+            <div class="card spare-card reveal">
+              <% if (spare.imageSrc) { %>
+                <img src="<%= spare.imageSrc %>" alt="<%= spare.imageAlt || spare.title %>" />
+              <% } %>
+              <span class="badge"><%= spare.category %></span>
+              <h3><%= spare.title %></h3>
+              <p><%= spare.details %></p>
+              <a class="btn btn-primary" href="/enquire/<%= spare.id %>">Enquire Now</a>
+            </div>
+          <% }) %>
+        </div>
+         <div class="card hero-panel featured-panel">
+          <h3>Why choose us</h3>
+          <ul>
+            <li>Fast requirement handling</li>
+            <li>Trained support for compatible spares</li>
+            <li>Simple enquiry process for workshops and factories</li>
+          </ul>
+        </div>
+        <div class="section-actions">
+          <a class="btn btn-secondary" href="/products">Show more</a>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="container footer-inner">
+        <div>
+          <h3><%= settings.companyName %></h3>
+          <p>Delivering dependable CNC spare parts sales and service for workshops and manufacturing units.</p>
+        </div>
+        
+        <div>
+          <p><strong>Contact</strong></p>
+          <p><%= settings.companyPhone %></p>
+          <p><%= settings.companyEmail %></p>
+        </div>
+      </div>
+      <div class="container footer-copyright">
+        <p>© <%= new Date().getFullYear() %> <%= settings.companyName %>. All rights reserved.</p>
+      </div>
+      <center>
+      <div class="footer-bottom">
+          <a class="footer-link" href="https://www.netcraftstudios.org" target="_blank" rel="noopener noreferrer">Developed by Netcraft Studio</a>
+        </div>
+        </center>
+    </footer>
+  </body>
+</html>

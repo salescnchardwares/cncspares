@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Enquire for <%= spare.title %></title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/site.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="card form-card">
+        <h2>Enquiry for <%= spare.title %></h2>
+        <% if (spare.imageSrc) { %>
+          <img src="<%= spare.imageSrc %>" alt="<%= spare.imageAlt || spare.title %>" style="width: 100%; max-height: 240px; object-fit: cover; border-radius: 12px; margin-bottom: 1rem;" />
+        <% } %>
+        <p class="muted"><%= spare.details %></p>
+        <form method="post" action="/enquire/<%= spare.id %>">
+          <label>Name</label>
+          <input required name="customerName" placeholder="Enter your full name" />
+
+          <label>Mobile Number</label>
+          <input required name="mobileNumber" placeholder="Enter mobile number" />
+
+          <label>Email ID</label>
+          <input required type="email" name="emailId" placeholder="Enter email address" />
+
+          <label>Company Name (optional)</label>
+          <input name="companyName" placeholder="Company name" />
+
+          <label>GSTIN Number (optional)</label>
+          <input name="gstinNumber" placeholder="GSTIN number" />
+
+          <label>Quantity Needed</label>
+          <input required type="number" min="1" name="quantity" value="1" />
+
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Submit Enquiry</button>
+            <a class="btn btn-secondary" href="/">Back to Home</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>

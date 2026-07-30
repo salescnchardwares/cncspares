@@ -1,0 +1,30 @@
+[
+  {
+    "id": "order-1785406695291",
+    "spareId": "spare-1785316637997",
+    "spareTitle": "Testing",
+    "customerName": "Netcraft Studio",
+    "mobileNumber": "9360244928",
+    "emailId": "info.netcraftstudio@gmail.com",
+    "companyName": "Not provided",
+    "gstinNumber": "Not provided",
+    "quantity": 1,
+    "status": "Pending",
+    "createdAt": "2026-07-30T10:18:15.291Z",
+    "updatedAt": "2026-07-30T10:18:15.291Z"
+  },
+  {
+    "id": "order-1785406519623",
+    "spareId": "spare-2",
+    "spareTitle": "Servo Motor Encoder",
+    "customerName": "Netcraft Studio",
+    "mobileNumber": "9360244928",
+    "emailId": "info.netcraftstudio@gmail.com",
+    "companyName": "Not provided",
+    "gstinNumber": "Not provided",
+    "quantity": 1,
+    "status": "Pending",
+    "createdAt": "2026-07-30T10:15:19.623Z",
+    "updatedAt": "2026-07-30T10:15:19.623Z"
+  }
+]

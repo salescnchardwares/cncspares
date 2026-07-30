@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Company Details | Admin</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/site.css" />
+  </head>
+  <body>
+    <div class="container" style="padding: 2rem 0 3rem;">
+      <div class="navbar" style="margin-bottom: 1rem;">
+        <div class="brand">Admin Dashboard</div>
+        <div class="nav-links">
+          <a class="btn btn-secondary admin-nav-btn" href="/admin/company">Company</a>
+          <a class="btn btn-secondary admin-nav-btn" href="/admin/spares">Spares</a>
+          <a class="btn btn-secondary admin-nav-btn" href="/admin/orders">Orders</a>
+          <a class="btn btn-secondary admin-nav-btn" href="/admin/password">Password</a>
+          <a class="btn btn-secondary admin-nav-btn" href="/admin/logout">Logout</a>
+        </div>
+      </div>
+
+      <div class="card admin-card">
+        <h3>Company Details</h3>
+        <form method="post" action="/admin/settings">
+          <div class="admin-grid">
+            <div>
+              <label>Company Name</label>
+              <input name="companyName" value="<%= settings.companyName %>" />
+              <label>Tagline</label>
+              <input name="companyTagline" value="<%= settings.companyTagline %>" />
+              <label>Address</label>
+              <input name="companyAddress" value="<%= settings.companyAddress %>" />
+              <label>Phone</label>
+              <input name="companyPhone" value="<%= settings.companyPhone %>" />
+            </div>
+            <div>
+              <label>Email</label>
+              <input name="companyEmail" value="<%= settings.companyEmail %>" />
+              <label>Admin Email</label>
+              <input name="adminEmail" value="<%= settings.adminEmail %>" />
+              <label>Description</label>
+              <textarea name="companyDescription"><%= settings.companyDescription %></textarea>
+            </div>
+          </div>
+          <div class="admin-grid" style="margin-top: 1rem;">
+            <div>
+              <label>SMTP Host</label>
+              <input name="smtpHost" value="<%= settings.smtpHost || '' %>" placeholder="smtp.example.com" />
+              <label>SMTP User</label>
+              <input name="smtpUser" value="<%= settings.smtpUser || '' %>" placeholder="your-email@example.com" />
+            </div>
+            <div>
+              <label>SMTP Password</label>
+              <input name="smtpPass" type="password" value="<%= settings.smtpPass || '' %>" placeholder="Your SMTP password" />
+              <label>Mail From</label>
+              <input name="mailFrom" value="<%= settings.mailFrom || '' %>" placeholder="noreply@example.com" />
+            </div>
+          </div>
+          <div class="admin-grid" style="margin-top: 1rem;">
+            <div>
+              <label>Cloudinary Cloud Name</label>
+              <input name="cloudinaryCloudName" value="<%= settings.cloudinaryCloudName || '' %>" placeholder="your-cloud-name" />
+              <label>Cloudinary Upload Preset</label>
+              <input name="cloudinaryUploadPreset" value="<%= settings.cloudinaryUploadPreset || '' %>" placeholder="your-preset" />
+            </div>
+            <div>
+              <label>Cloudinary Folder</label>
+              <input name="cloudinaryFolder" value="<%= settings.cloudinaryFolder || '' %>" placeholder="cnc-spares" />
+              <p class="small">You can paste your Cloudinary details here and use them for spare images.</p>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Save Company Details</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>

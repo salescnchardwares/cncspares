@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Login</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/site.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="card form-card">
+        <h2>Admin Login</h2>
+        <% if (error) { %>
+          <div class="alert"><%= error %></div>
+        <% } %>
+        <form method="post" action="/admin/login">
+          <label>Password</label>
+          <input type="password" name="password" required />
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Login</button>
+            <a class="btn btn-secondary" href="/">Back to Website</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>

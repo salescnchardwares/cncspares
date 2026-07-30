@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Contact Us | <%= settings.companyName %></title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/site.css" />
+  </head>
+  <body>
+    <header>
+      <div class="container navbar">
+        <a href="/" class="brand"><%= settings.companyName %></a>
+        <div class="nav-links">
+          <a href="/">Home</a>
+          <a href="/products">Products</a>
+          <a href="/contact">Contact Us</a>
+        </div>
+      </div>
+    </header>
+
+    <section class="section">
+      <div class="container">
+        <div class="hero-card">
+          <div class="card spare-card reveal">
+            <h2>Contact <%= settings.companyName %></h2>
+            <p><%= settings.companyDescription %></p>
+            <p>We provide quality service and the best price for spare parts, with dependable support for CNC maintenance, upgrades, and urgent replacements.</p>
+            <p><strong>Phone:</strong> <%= settings.companyPhone %></p>
+            <p><strong>Email:</strong> <%= settings.companyEmail %></p>
+            <p><strong>Address:</strong> <%= settings.companyAddress %></p>
+          </div>
+          <div class="card spare-card reveal">
+            <h3>Share your spare requirement</h3>
+            <% if (submitted) { %>
+              <div class="alert">Your request has been submitted successfully. We will contact you shortly.</div>
+            <% } %>
+            <form action="/contact" method="post" enctype="multipart/form-data">
+              <label>Name</label>
+              <input name="customerName" required placeholder="Your name" />
+              <label>Description</label>
+              <textarea name="description" required placeholder="Describe the spare part or requirement"></textarea>
+              <label>Mobile Number</label>
+              <input name="mobileNumber" required placeholder="Mobile number" />
+              <label>Email ID</label>
+              <input name="emailId" type="email" required placeholder="Email address" />
+              <label>Spare Image (optional)</label>
+              <input name="imageFile" type="file" accept="image/*" />
+              <div class="form-actions">
+                <button class="btn btn-primary" type="submit">Submit Request</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="container footer-inner">
+        <div>
+          <h3><%= settings.companyName %></h3>
+          <p>Committed to quality service and competitive pricing for CNC spare parts and support.</p>
+        </div>
+       
+        <div>
+          <p><strong>Contact</strong></p>
+          <p><%= settings.companyPhone %></p>
+          <p><%= settings.companyEmail %></p>
+        </div>
+      </div>
+      <div class="container footer-copyright">
+        <p>© <%= new Date().getFullYear() %> <%= settings.companyName %>. All rights reserved.</p>
+      </div>
+      <center>
+         <div class="footer-center">
+          <a class="footer-link" href="https://www.netcraftstudios.org" target="_blank" rel="noopener noreferrer">Developed by Netcraft Studio</a>
+        </div>
+        </center>
+    </footer>
+    <script>
+      window.scrollTo(0, 0);
+      window.addEventListener('load', function () {
+        window.scrollTo(0, 0);
+      });
+    </script>
+  </body>
+</html>

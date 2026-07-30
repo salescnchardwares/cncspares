@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spares | Admin</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/site.css" />
+  </head>
+  <body>
+    <div class="container" style="padding: 2rem 0 3rem;">
+      <div class="navbar" style="margin-bottom: 1rem;">
+        <div class="brand">Admin Dashboard</div>
+        <div class="nav-links">
+          <a class="btn btn-secondary admin-nav-btn" href="/admin/company">Company</a>
+          <a class="btn btn-secondary admin-nav-btn" href="/admin/spares">Spares</a>
+          <a class="btn btn-secondary admin-nav-btn" href="/admin/orders">Orders</a>
+          <a class="btn btn-secondary admin-nav-btn" href="/admin/password">Password</a>
+          <a class="btn btn-secondary admin-nav-btn" href="/admin/logout">Logout</a>
+        </div>
+      </div>
+
+      <div class="card admin-card">
+        <div class="admin-section-header">
+          <h3><%= editingSpare ? 'Update Spare' : 'Add Spare' %></h3>
+          <% if (editingSpare) { %>
+            <a class="btn btn-secondary" href="/admin/spares">Cancel Edit</a>
+          <% } %>
+        </div>
+        <% if (editingSpare) { %>
+          <p class="small">Editing <strong><%= editingSpare.title %></strong></p>
+        <% } %>
+        <form method="post" action="/admin/spares" enctype="multipart/form-data">
+          <input type="hidden" name="id" value="<%= editingSpare ? editingSpare.id : '' %>" />
+          <label>Title</label>
+          <input name="title" value="<%= editingSpare ? editingSpare.title : '' %>" placeholder="Spare title" required />
+          <label>Category</label>
+          <input name="category" value="<%= editingSpare ? editingSpare.category : '' %>" placeholder="Category" required />
+          <label>Details</label>
+          <textarea name="details" placeholder="Describe the spare part details" required><%= editingSpare ? editingSpare.details : '' %></textarea>
+          <label>Upload spare image locally</label>
+          <input name="imageFile" type="file" accept="image/*" />
+          <label>Image URL</label>
+          <input name="imageUrl" value="<%= editingSpare ? (editingSpare.imageUrl || '') : '' %>" placeholder="https://..." />
+          <label>Image Public ID</label>
+          <input name="imagePublicId" value="<%= editingSpare ? (editingSpare.imagePublicId || '') : '' %>" placeholder="cloudinary-public-id" />
+          <label>Image Alt Text</label>
+          <input name="imageAlt" value="<%= editingSpare ? (editingSpare.imageAlt || '') : '' %>" placeholder="Describe the image" />
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Save Spare</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card admin-card">
+        <div class="admin-section-header">
+          <h3>Existing Spare Parts</h3>
+          <span class="small"><%= spares.length %> item(s)</span>
+        </div>
+        <% spares.forEach(function(spare) { %>
+          <div class="card" style="padding: 1rem; margin-bottom: 0.8rem;">
+            <h4><%= spare.title %></h4>
+            <p class="small"><strong>Category:</strong> <%= spare.category %></p>
+            <p><%= spare.details %></p>
+            <div class="form-actions">
+              <a class="btn btn-secondary" href="/admin/spares/<%= spare.id %>/edit">Edit</a>
+              <form method="post" action="/admin/spares/delete" class="admin-inline-form">
+                <input type="hidden" name="id" value="<%= spare.id %>" />
+                <button class="btn btn-secondary" type="submit">Remove</button>
+              </form>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+  </body>
+</html>
