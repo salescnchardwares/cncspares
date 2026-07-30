@@ -108,16 +108,25 @@ function ensureDataFiles() {
 }
 
 function readJson(filePath, fallback) {
-  const candidates = [filePath, resolveStoragePath(filePath)];
-  for (const candidate of candidates) {
-    try {
-      if (fs.existsSync(candidate)) {
-        return JSON.parse(fs.readFileSync(candidate, 'utf8'));
-      }
-    } catch (error) {
-      // ignore and try the next candidate
+  const targetPath = resolveStoragePath(filePath);
+  try {
+    if (fs.existsSync(targetPath)) {
+      return JSON.parse(fs.readFileSync(targetPath, 'utf8'));
     }
+  } catch (error) {
+    // ignore and fall back
   }
+
+  try {
+    if (fs.existsSync(filePath)) {
+      const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      writeJson(filePath, data);
+      return data;
+    }
+  } catch (error) {
+    // ignore and use fallback
+  }
+
   return fallback;
 }
 
@@ -140,6 +149,10 @@ function loadData() {
     inquiries: readJson(INQUIRIES_FILE, []),
     settings: readJson(SETTINGS_FILE, {})
   };
+}
+
+function persistJson(filePath, data) {
+  return writeJson(filePath, data);
 }
 
 function toCsvValue(value) {
@@ -250,7 +263,7 @@ app.get('/', (req, res) => {
   const { spares, inquiries, settings } = loadData();
   if (settings.analyticsEnabled) {
     settings.analyticsVisits = Number(settings.analyticsVisits || 0) + 1;
-    writeJson(SETTINGS_FILE, { ...settings, analyticsVisits: settings.analyticsVisits });
+    persistJson(SETTINGS_FILE, { ...settings, analyticsVisits: settings.analyticsVisits });
   }
   const enrichedSpares = spares.map((spare) => ({
     ...spare,
@@ -270,7 +283,7 @@ app.get('/products', (req, res) => {
   const { spares, settings } = loadData();
   if (settings.analyticsEnabled) {
     settings.analyticsVisits = Number(settings.analyticsVisits || 0) + 1;
-    writeJson(SETTINGS_FILE, { ...settings, analyticsVisits: settings.analyticsVisits });
+    persistJson(SETTINGS_FILE, { ...settings, analyticsVisits: settings.analyticsVisits });
   }
   const enrichedSpares = spares.map((spare) => ({
     ...spare,
@@ -287,7 +300,7 @@ app.get('/contact', (req, res) => {
   const { settings } = loadData();
   if (settings.analyticsEnabled) {
     settings.analyticsVisits = Number(settings.analyticsVisits || 0) + 1;
-    writeJson(SETTINGS_FILE, { ...settings, analyticsVisits: settings.analyticsVisits });
+    persistJson(SETTINGS_FILE, { ...settings, analyticsVisits: settings.analyticsVisits });
   }
   res.render('contact', { settings, submitted: req.query.submitted === '1' });
 });
@@ -389,7 +402,7 @@ app.post('/enquire/:id', async (req, res) => {
   };
 
   inquiries.unshift(enquiry);
-  writeJson(INQUIRIES_FILE, inquiries);
+  persistJson(INQUIRIES_FILE, inquiries);
 
   const adminEmail = settings.adminEmail || process.env.ADMIN_EMAIL || 'sales.cnchardwares@gmail.com';
   const adminHtml = `
@@ -494,7 +507,7 @@ app.post('/admin/spares', upload.single('imageFile'), async (req, res) => {
     imagePublicId: imageUpload?.imagePublicId || req.body.imagePublicId || '',
     imageAlt: req.body.imageAlt || req.body.title
   });
-  writeJson(SPARES_FILE, updatedSpares);
+  persistJson(SPARES_FILE, updatedSpares);
   res.redirect('/admin/spares');
 });
 
@@ -502,7 +515,7 @@ app.post('/admin/spares/delete', (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
   const { spares } = loadData();
   const filtered = spares.filter((item) => item.id !== req.body.id);
-  writeJson(SPARES_FILE, filtered);
+  persistJson(SPARES_FILE, filtered);
   res.redirect('/admin/spares');
 });
 
@@ -544,7 +557,7 @@ app.post('/admin/settings', upload.single('logoFile'), async (req, res) => {
     companyLogoUrl: logoUrl,
     companyLogoPublicId: logoPublicId
   };
-  writeJson(SETTINGS_FILE, settings);
+  persistJson(SETTINGS_FILE, settings);
   res.redirect('/admin/company');
 });
 
@@ -555,7 +568,7 @@ app.post('/admin/analytics-toggle', (req, res) => {
     ...settings,
     analyticsEnabled: req.body.analyticsEnabled === 'on'
   };
-  writeJson(SETTINGS_FILE, updatedSettings);
+  persistJson(SETTINGS_FILE, updatedSettings);
   res.redirect('/admin');
 });
 
@@ -575,7 +588,7 @@ app.post('/admin/orders/:id/status', async (req, res) => {
 
   enquiry.status = req.body.status;
   enquiry.updatedAt = new Date().toISOString();
-  writeJson(INQUIRIES_FILE, inquiries);
+  persistJson(INQUIRIES_FILE, inquiries);
 
   const subject = `Order status updated: ${req.body.status}`;
   const html = `
@@ -593,7 +606,7 @@ app.post('/admin/orders/delete', (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
   const { inquiries } = loadData();
   const filtered = inquiries.filter((item) => item.id !== req.body.id);
-  writeJson(INQUIRIES_FILE, filtered);
+  persistJson(INQUIRIES_FILE, filtered);
   res.redirect('/admin/orders');
 });
 
@@ -621,7 +634,7 @@ app.post('/admin/password', (req, res) => {
   }
 
   const updatedSettings = { ...settings, adminPassword: newPassword };
-  writeJson(SETTINGS_FILE, updatedSettings);
+  persistJson(SETTINGS_FILE, updatedSettings);
   return res.render('admin-password', { settings: updatedSettings, message: 'Admin password updated successfully.', error: '' });
 });
 
