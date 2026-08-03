@@ -4,14 +4,6 @@ const fs = require('fs');
 const path = require('path');
 const nodemailer = require('nodemailer');
 const multer = require('multer');
-let kv = null;
-try {
-  ({ kv } = require('@vercel/kv'));
-} catch (error) {
-  if (process.env.VERCEL === '1') {
-    console.warn('Vercel KV is not available; falling back to local /tmp storage.');
-  }
-}
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -72,13 +64,8 @@ function resolveStoragePath(filePath) {
 }
 
 function ensureDataFiles() {
-  const sparesPath = resolveStoragePath(SPARES_FILE);
-  const inquiriesPath = resolveStoragePath(INQUIRIES_FILE);
-  const settingsPath = resolveStoragePath(SETTINGS_FILE);
-
-  fs.mkdirSync(path.dirname(sparesPath), { recursive: true });
-
-  if (!fs.existsSync(sparesPath)) {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  if (!fs.existsSync(SPARES_FILE)) {
     writeJson(SPARES_FILE, [
       {
         id: 'spare-1',
@@ -103,8 +90,8 @@ function ensureDataFiles() {
       }
     ]);
   }
-  if (!fs.existsSync(inquiriesPath)) writeJson(INQUIRIES_FILE, []);
-  if (!fs.existsSync(settingsPath)) {
+  if (!fs.existsSync(INQUIRIES_FILE)) writeJson(INQUIRIES_FILE, []);
+  if (!fs.existsSync(SETTINGS_FILE)) {
     writeJson(SETTINGS_FILE, {
       companyName: 'CNC Hardwares',
       companyTagline: 'Your trusted source for CNC spare parts sales and service',
@@ -127,24 +114,7 @@ function ensureDataFiles() {
   }
 }
 
-function storageKey(filePath) {
-  if (filePath === SPARES_FILE) return 'cnc-spares:spares';
-  if (filePath === INQUIRIES_FILE) return 'cnc-spares:inquiries';
-  if (filePath === SETTINGS_FILE) return 'cnc-spares:settings';
-  return null;
-}
-
-async function readJson(filePath, fallback) {
-  const key = storageKey(filePath);
-  if (process.env.VERCEL === '1' && key && kv) {
-    try {
-      const value = await kv.get(key);
-      if (value) return JSON.parse(value);
-    } catch (error) {
-      console.error(`KV read failed for ${key}:`, error);
-    }
-  }
-
+function readJson(filePath, fallback) {
   const targetPath = resolveStoragePath(filePath);
   try {
     if (fs.existsSync(targetPath)) {
@@ -157,7 +127,7 @@ async function readJson(filePath, fallback) {
   try {
     if (fs.existsSync(filePath)) {
       const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-      await writeJson(filePath, data);
+      writeJson(filePath, data);
       return data;
     }
   } catch (error) {
@@ -167,17 +137,7 @@ async function readJson(filePath, fallback) {
   return fallback;
 }
 
-async function writeJson(filePath, data) {
-  const key = storageKey(filePath);
-  if (process.env.VERCEL === '1' && key && kv) {
-    try {
-      await kv.set(key, JSON.stringify(data));
-      return key;
-    } catch (error) {
-      console.error(`KV write failed for ${key}:`, error);
-    }
-  }
-
+function writeJson(filePath, data) {
   const targetPath = resolveStoragePath(filePath);
   try {
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
@@ -189,16 +149,16 @@ async function writeJson(filePath, data) {
   }
 }
 
-async function loadData() {
+function loadData() {
   ensureDataFiles();
   return {
-    spares: await readJson(SPARES_FILE, []),
-    inquiries: await readJson(INQUIRIES_FILE, []),
-    settings: await readJson(SETTINGS_FILE, {})
+    spares: readJson(SPARES_FILE, []),
+    inquiries: readJson(INQUIRIES_FILE, []),
+    settings: readJson(SETTINGS_FILE, {})
   };
 }
 
-async function persistJson(filePath, data) {
+function persistJson(filePath, data) {
   return writeJson(filePath, data);
 }
 
@@ -283,20 +243,6 @@ function getAdminPassword(settings) {
   return settings.adminPassword || process.env.ADMIN_PASSWORD || 'admin1234';
 }
 
-function formatAdminTimestamp(timestamp) {
-  if (!timestamp) return 'N/A';
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) return 'Invalid date';
-  return date.toLocaleString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  });
-}
-
 function getTransporter(settings) {
   const smtpHost = settings.smtpHost || process.env.SMTP_HOST;
   const smtpUser = settings.smtpUser || process.env.SMTP_USER;
@@ -350,11 +296,11 @@ async function buildEmailAttachment(imageUrl, fileName) {
   }
 }
 
-app.get('/', async (req, res) => {
-  const { spares, inquiries, settings } = await loadData();
+app.get('/', (req, res) => {
+  const { spares, inquiries, settings } = loadData();
   if (settings.analyticsEnabled) {
     settings.analyticsVisits = Number(settings.analyticsVisits || 0) + 1;
-    await persistJson(SETTINGS_FILE, { ...settings, analyticsVisits: settings.analyticsVisits });
+    persistJson(SETTINGS_FILE, { ...settings, analyticsVisits: settings.analyticsVisits });
   }
   const enrichedSpares = spares.map((spare) => ({
     ...spare,
@@ -370,11 +316,11 @@ app.get('/', async (req, res) => {
   });
 });
 
-app.get('/products', async (req, res) => {
-  const { spares, settings } = await loadData();
+app.get('/products', (req, res) => {
+  const { spares, settings } = loadData();
   if (settings.analyticsEnabled) {
     settings.analyticsVisits = Number(settings.analyticsVisits || 0) + 1;
-    await persistJson(SETTINGS_FILE, { ...settings, analyticsVisits: settings.analyticsVisits });
+    persistJson(SETTINGS_FILE, { ...settings, analyticsVisits: settings.analyticsVisits });
   }
   const enrichedSpares = spares.map((spare) => ({
     ...spare,
@@ -387,17 +333,17 @@ app.get('/products', async (req, res) => {
   });
 });
 
-app.get('/contact', async (req, res) => {
-  const { settings } = await loadData();
+app.get('/contact', (req, res) => {
+  const { settings } = loadData();
   if (settings.analyticsEnabled) {
     settings.analyticsVisits = Number(settings.analyticsVisits || 0) + 1;
-    await persistJson(SETTINGS_FILE, { ...settings, analyticsVisits: settings.analyticsVisits });
+    persistJson(SETTINGS_FILE, { ...settings, analyticsVisits: settings.analyticsVisits });
   }
   res.render('contact', { settings, submitted: req.query.submitted === '1' });
 });
 
 app.post('/contact', async (req, res) => {
-  const { settings } = await loadData();
+  const { settings } = loadData();
   if (req.body.website && req.body.website.trim()) {
     return res.redirect('/contact?submitted=1');
   }
@@ -419,7 +365,7 @@ app.post('/contact', async (req, res) => {
     createdAt: new Date().toISOString()
   };
 
-  const { inquiries } = await loadData();
+  const { inquiries } = loadData();
   const contactFingerprint = buildInquiryFingerprint('contact', request);
   const existingContactRequest = hasRecentDuplicateInquiry(inquiries, contactFingerprint);
   if (existingContactRequest) {
@@ -428,7 +374,7 @@ app.post('/contact', async (req, res) => {
 
   request.enquiryFingerprint = contactFingerprint;
   inquiries.unshift(request);
-  await persistJson(INQUIRIES_FILE, inquiries);
+  persistJson(INQUIRIES_FILE, inquiries);
 
   const imageHtml = attachments.length
     ? `<p><strong>Uploaded image:</strong></p><img src="cid:contact-image" alt="Uploaded contact image" style="max-width: 100%; max-height: 240px; border-radius: 10px;" />`
@@ -459,8 +405,8 @@ app.post('/contact', async (req, res) => {
   res.redirect('/contact?submitted=1');
 });
 
-app.get('/enquire/:id', async (req, res) => {
-  const { spares, settings } = await loadData();
+app.get('/enquire/:id', (req, res) => {
+  const { spares, settings } = loadData();
   const spare = spares.find((item) => item.id === req.params.id);
   if (!spare) {
     return res.status(404).send('Spare not found');
@@ -473,7 +419,7 @@ app.get('/enquire/:id', async (req, res) => {
 });
 
 app.post('/enquire/:id', async (req, res) => {
-  const { spares, inquiries, settings } = await loadData();
+  const { spares, inquiries, settings } = loadData();
   if (req.body.website && req.body.website.trim()) {
     return res.redirect('/?submitted=1');
   }
@@ -506,7 +452,7 @@ app.post('/enquire/:id', async (req, res) => {
 
   enquiry.enquiryFingerprint = enquiryFingerprint;
   inquiries.unshift(enquiry);
-  await persistJson(INQUIRIES_FILE, inquiries);
+  persistJson(INQUIRIES_FILE, inquiries);
 
   const adminEmail = settings.adminEmail || process.env.ADMIN_EMAIL || 'sales.cnchardwares@gmail.com';
   const adminHtml = `
@@ -538,9 +484,9 @@ app.get('/admin/login', (req, res) => {
   res.render('admin-login', { error: '' });
 });
 
-app.post('/admin/login', async (req, res) => {
+app.post('/admin/login', (req, res) => {
   const password = req.body.password;
-  const { settings } = await loadData();
+  const { settings } = loadData();
   const expectedPassword = getAdminPassword(settings);
   if (password === expectedPassword) {
     req.session.adminAuthenticated = true;
@@ -555,9 +501,9 @@ app.get('/admin/logout', (req, res) => {
   });
 });
 
-app.get('/admin', async (req, res) => {
+app.get('/admin', (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { spares, inquiries, settings } = await loadData();
+  const { spares, inquiries, settings } = loadData();
   res.render('admin', {
     spares,
     inquiries,
@@ -568,31 +514,28 @@ app.get('/admin', async (req, res) => {
   });
 });
 
-app.get('/admin/company', async (req, res) => {
+app.get('/admin/company', (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { settings } = await loadData();
-  const storageWarning = process.env.VERCEL === '1' && !kv
-    ? 'Persistent storage is not configured on Vercel. Mail settings and Cloudinary details may reset after a cold start unless Vercel KV is enabled.'
-    : '';
-  res.render('admin-company', { settings, storageWarning });
+  const { settings } = loadData();
+  res.render('admin-company', { settings });
 });
 
-app.get('/admin/spares', async (req, res) => {
+app.get('/admin/spares', (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { spares, inquiries, settings } = await loadData();
+  const { spares, inquiries, settings } = loadData();
   res.render('admin-spares', { spares, inquiries, settings, editingSpare: null });
 });
 
-app.get('/admin/spares/:id/edit', async (req, res) => {
+app.get('/admin/spares/:id/edit', (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { spares, inquiries, settings } = await loadData();
+  const { spares, inquiries, settings } = loadData();
   const editingSpare = spares.find((item) => item.id === req.params.id) || null;
   res.render('admin-spares', { spares, inquiries, settings, editingSpare });
 });
 
 app.post('/admin/spares', upload.single('imageFile'), async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { spares, settings } = await loadData();
+  const { spares, settings } = loadData();
   const spareId = req.body.id || `spare-${Date.now()}`;
   const updatedSpares = spares.filter((item) => item.id !== spareId);
   let imageUpload = null;
@@ -614,21 +557,21 @@ app.post('/admin/spares', upload.single('imageFile'), async (req, res) => {
     imagePublicId: imageUpload?.imagePublicId || req.body.imagePublicId || '',
     imageAlt: req.body.imageAlt || req.body.title
   });
-  await persistJson(SPARES_FILE, updatedSpares);
+  persistJson(SPARES_FILE, updatedSpares);
   res.redirect('/admin/spares');
 });
 
-app.post('/admin/spares/delete', async (req, res) => {
+app.post('/admin/spares/delete', (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { spares } = await loadData();
+  const { spares } = loadData();
   const filtered = spares.filter((item) => item.id !== req.body.id);
-  await persistJson(SPARES_FILE, filtered);
+  persistJson(SPARES_FILE, filtered);
   res.redirect('/admin/spares');
 });
 
 app.post('/admin/settings', upload.single('logoFile'), async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const current = (await loadData()).settings;
+  const current = loadData().settings;
   let logoUrl = req.body.companyLogoUrl || current.companyLogoUrl || '';
   let logoPublicId = current.companyLogoPublicId || '';
 
@@ -646,48 +589,48 @@ app.post('/admin/settings', upload.single('logoFile'), async (req, res) => {
 
   const settings = {
     ...current,
-    companyName: req.body.companyName || current.companyName,
-    companyTagline: req.body.companyTagline || current.companyTagline,
-    companyDescription: req.body.companyDescription || current.companyDescription,
-    companyAddress: req.body.companyAddress || current.companyAddress,
-    companyPhone: req.body.companyPhone || current.companyPhone,
-    companyEmail: req.body.companyEmail || current.companyEmail,
-    adminEmail: req.body.adminEmail || current.adminEmail,
+    companyName: req.body.companyName,
+    companyTagline: req.body.companyTagline,
+    companyDescription: req.body.companyDescription,
+    companyAddress: req.body.companyAddress,
+    companyPhone: req.body.companyPhone,
+    companyEmail: req.body.companyEmail,
+    adminEmail: req.body.adminEmail,
     analyticsEnabled: req.body.analyticsEnabled === 'on',
-    smtpHost: req.body.smtpHost || current.smtpHost,
-    smtpUser: req.body.smtpUser || current.smtpUser,
-    smtpPass: req.body.smtpPass || current.smtpPass,
-    mailFrom: req.body.mailFrom || current.mailFrom,
-    cloudinaryCloudName: req.body.cloudinaryCloudName || current.cloudinaryCloudName,
-    cloudinaryUploadPreset: req.body.cloudinaryUploadPreset || current.cloudinaryUploadPreset,
-    cloudinaryFolder: req.body.cloudinaryFolder || current.cloudinaryFolder,
-    companyLogoUrl: logoUrl || current.companyLogoUrl,
-    companyLogoPublicId: logoPublicId || current.companyLogoPublicId
+    smtpHost: req.body.smtpHost,
+    smtpUser: req.body.smtpUser,
+    smtpPass: req.body.smtpPass,
+    mailFrom: req.body.mailFrom,
+    cloudinaryCloudName: req.body.cloudinaryCloudName,
+    cloudinaryUploadPreset: req.body.cloudinaryUploadPreset,
+    cloudinaryFolder: req.body.cloudinaryFolder,
+    companyLogoUrl: logoUrl,
+    companyLogoPublicId: logoPublicId
   };
-  await persistJson(SETTINGS_FILE, settings);
+  persistJson(SETTINGS_FILE, settings);
   res.redirect('/admin/company');
 });
 
-app.post('/admin/analytics-toggle', async (req, res) => {
+app.post('/admin/analytics-toggle', (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { settings } = await loadData();
+  const { settings } = loadData();
   const updatedSettings = {
     ...settings,
     analyticsEnabled: req.body.analyticsEnabled === 'on'
   };
-  await persistJson(SETTINGS_FILE, updatedSettings);
+  persistJson(SETTINGS_FILE, updatedSettings);
   res.redirect('/admin');
 });
 
-app.get('/admin/orders', async (req, res) => {
+app.get('/admin/orders', (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { inquiries, settings } = await loadData();
-  res.render('admin-orders', { inquiries, settings, formatDate: formatAdminTimestamp });
+  const { inquiries, settings } = loadData();
+  res.render('admin-orders', { inquiries, settings });
 });
 
 app.post('/admin/orders/:id/status', async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { inquiries, settings } = await loadData();
+  const { inquiries, settings } = loadData();
   const enquiry = inquiries.find((item) => item.id === req.params.id);
   if (!enquiry) {
     return res.redirect('/admin/orders');
@@ -695,7 +638,7 @@ app.post('/admin/orders/:id/status', async (req, res) => {
 
   enquiry.status = req.body.status;
   enquiry.updatedAt = new Date().toISOString();
-  await persistJson(INQUIRIES_FILE, inquiries);
+  persistJson(INQUIRIES_FILE, inquiries);
 
   const subject = `Order status updated: ${req.body.status}`;
   const html = `
@@ -709,23 +652,23 @@ app.post('/admin/orders/:id/status', async (req, res) => {
   res.redirect('/admin/orders');
 });
 
-app.post('/admin/orders/delete', async (req, res) => {
+app.post('/admin/orders/delete', (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { inquiries } = await loadData();
+  const { inquiries } = loadData();
   const filtered = inquiries.filter((item) => item.id !== req.body.id);
-  await persistJson(INQUIRIES_FILE, filtered);
+  persistJson(INQUIRIES_FILE, filtered);
   res.redirect('/admin/orders');
 });
 
-app.get('/admin/password', async (req, res) => {
+app.get('/admin/password', (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { settings } = await loadData();
+  const { settings } = loadData();
   res.render('admin-password', { settings, message: '', error: '' });
 });
 
-app.post('/admin/password', async (req, res) => {
+app.post('/admin/password', (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { settings } = await loadData();
+  const { settings } = loadData();
   const currentPassword = req.body.currentPassword || '';
   const newPassword = req.body.newPassword || '';
   const confirmPassword = req.body.confirmPassword || '';
@@ -741,13 +684,13 @@ app.post('/admin/password', async (req, res) => {
   }
 
   const updatedSettings = { ...settings, adminPassword: newPassword };
-  await persistJson(SETTINGS_FILE, updatedSettings);
+  persistJson(SETTINGS_FILE, updatedSettings);
   return res.render('admin-password', { settings: updatedSettings, message: 'Admin password updated successfully.', error: '' });
 });
 
-app.get('/admin/export-orders', async (req, res) => {
+app.get('/admin/export-orders', (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { inquiries } = await loadData();
+  const { inquiries } = loadData();
   const rows = [
     ['Order ID', 'Customer Name', 'Mobile Number', 'Email', 'Company', 'GSTIN', 'Quantity', 'Spare', 'Status', 'Created At', 'Updated At']
   ];
