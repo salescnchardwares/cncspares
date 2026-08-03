@@ -169,6 +169,36 @@ function buildSpareImageUrl(spare, settings) {
   return '';
 }
 
+function normalizeInquiryField(value) {
+  return String(value ?? '').trim().toLowerCase();
+}
+
+function buildInquiryFingerprint(source, data) {
+  const values = [
+    source,
+    data.spareId || '',
+    data.customerName || '',
+    data.mobileNumber || '',
+    data.emailId || '',
+    data.companyName || '',
+    data.gstinNumber || '',
+    data.quantity || '',
+    data.description || ''
+  ].map((value) => normalizeInquiryField(value));
+
+  return values.join('|');
+}
+
+function hasRecentDuplicateInquiry(inquiries, fingerprint, duplicateWindowMs = 10 * 60 * 1000) {
+  return inquiries.find((item) => {
+    const itemFingerprint = item.enquiryFingerprint || buildInquiryFingerprint(item.source || 'enquiry', item);
+    if (itemFingerprint !== fingerprint) return false;
+    if (!item.createdAt) return false;
+    const createdAt = new Date(item.createdAt).getTime();
+    return !Number.isNaN(createdAt) && Date.now() - createdAt < duplicateWindowMs;
+  });
+}
+
 async function uploadToCloudinary(buffer, fileName, settings) {
   const cloudName = settings.cloudinaryCloudName || process.env.CLOUDINARY_CLOUD_NAME;
   const uploadPreset = settings.cloudinaryUploadPreset || process.env.CLOUDINARY_UPLOAD_PRESET;
@@ -307,6 +337,10 @@ app.get('/contact', (req, res) => {
 
 app.post('/contact', async (req, res) => {
   const { settings } = loadData();
+  if (req.body.website && req.body.website.trim()) {
+    return res.redirect('/contact?submitted=1');
+  }
+
   let uploadResult = null;
   let attachments = [];
 
@@ -323,6 +357,17 @@ app.post('/contact', async (req, res) => {
     status: 'Submitted',
     createdAt: new Date().toISOString()
   };
+
+  const { inquiries } = loadData();
+  const contactFingerprint = buildInquiryFingerprint('contact', request);
+  const existingContactRequest = hasRecentDuplicateInquiry(inquiries, contactFingerprint);
+  if (existingContactRequest) {
+    return res.redirect('/contact?submitted=1');
+  }
+
+  request.enquiryFingerprint = contactFingerprint;
+  inquiries.unshift(request);
+  persistJson(INQUIRIES_FILE, inquiries);
 
   const imageHtml = attachments.length
     ? `<p><strong>Uploaded image:</strong></p><img src="cid:contact-image" alt="Uploaded contact image" style="max-width: 100%; max-height: 240px; border-radius: 10px;" />`
@@ -368,6 +413,10 @@ app.get('/enquire/:id', (req, res) => {
 
 app.post('/enquire/:id', async (req, res) => {
   const { spares, inquiries, settings } = loadData();
+  if (req.body.website && req.body.website.trim()) {
+    return res.redirect('/?submitted=1');
+  }
+
   const spare = spares.find((item) => item.id === req.params.id);
   if (!spare) {
     return res.status(404).send('Spare not found');
@@ -388,6 +437,13 @@ app.post('/enquire/:id', async (req, res) => {
     updatedAt: new Date().toISOString()
   };
 
+  const enquiryFingerprint = buildInquiryFingerprint('enquiry', enquiry);
+  const existingEnquiry = hasRecentDuplicateInquiry(inquiries, enquiryFingerprint);
+  if (existingEnquiry) {
+    return res.redirect('/?submitted=1');
+  }
+
+  enquiry.enquiryFingerprint = enquiryFingerprint;
   inquiries.unshift(enquiry);
   persistJson(INQUIRIES_FILE, inquiries);
 
