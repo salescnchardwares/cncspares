@@ -5,8 +5,6 @@ const path = require('path');
 const nodemailer = require('nodemailer');
 const multer = require('multer');
 
-const FileStore = require('session-file-store')(session);
-
 const upload = multer({ storage: multer.memoryStorage() });
 
 const app = express();
@@ -33,11 +31,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
-  store: new FileStore({
-    path: path.join(DATA_DIR, 'sessions'),
-    reapInterval: 900,
-    ttl: 60 * 60 * 8
-  }),
   secret: process.env.SESSION_SECRET || 'cnc-spares-secret',
   resave: false,
   saveUninitialized: false,
