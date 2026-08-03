@@ -4,7 +4,14 @@ const fs = require('fs');
 const path = require('path');
 const nodemailer = require('nodemailer');
 const multer = require('multer');
-const { kv } = require('@vercel/kv');
+let kv = null;
+try {
+  ({ kv } = require('@vercel/kv'));
+} catch (error) {
+  if (process.env.VERCEL === '1') {
+    console.warn('Vercel KV is not available; falling back to local /tmp storage.');
+  }
+}
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -65,8 +72,13 @@ function resolveStoragePath(filePath) {
 }
 
 function ensureDataFiles() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  if (!fs.existsSync(SPARES_FILE)) {
+  const sparesPath = resolveStoragePath(SPARES_FILE);
+  const inquiriesPath = resolveStoragePath(INQUIRIES_FILE);
+  const settingsPath = resolveStoragePath(SETTINGS_FILE);
+
+  fs.mkdirSync(path.dirname(sparesPath), { recursive: true });
+
+  if (!fs.existsSync(sparesPath)) {
     writeJson(SPARES_FILE, [
       {
         id: 'spare-1',
@@ -91,8 +103,8 @@ function ensureDataFiles() {
       }
     ]);
   }
-  if (!fs.existsSync(INQUIRIES_FILE)) writeJson(INQUIRIES_FILE, []);
-  if (!fs.existsSync(SETTINGS_FILE)) {
+  if (!fs.existsSync(inquiriesPath)) writeJson(INQUIRIES_FILE, []);
+  if (!fs.existsSync(settingsPath)) {
     writeJson(SETTINGS_FILE, {
       companyName: 'CNC Hardwares',
       companyTagline: 'Your trusted source for CNC spare parts sales and service',
@@ -124,7 +136,7 @@ function storageKey(filePath) {
 
 async function readJson(filePath, fallback) {
   const key = storageKey(filePath);
-  if (process.env.VERCEL === '1' && key) {
+  if (process.env.VERCEL === '1' && key && kv) {
     try {
       const value = await kv.get(key);
       if (value) return JSON.parse(value);
@@ -157,7 +169,7 @@ async function readJson(filePath, fallback) {
 
 async function writeJson(filePath, data) {
   const key = storageKey(filePath);
-  if (process.env.VERCEL === '1' && key) {
+  if (process.env.VERCEL === '1' && key && kv) {
     try {
       await kv.set(key, JSON.stringify(data));
       return key;
