@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const nodemailer = require('nodemailer');
 const multer = require('multer');
+const { kv } = require('@vercel/kv');
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -114,7 +115,24 @@ function ensureDataFiles() {
   }
 }
 
-function readJson(filePath, fallback) {
+function storageKey(filePath) {
+  if (filePath === SPARES_FILE) return 'cnc-spares:spares';
+  if (filePath === INQUIRIES_FILE) return 'cnc-spares:inquiries';
+  if (filePath === SETTINGS_FILE) return 'cnc-spares:settings';
+  return null;
+}
+
+async function readJson(filePath, fallback) {
+  const key = storageKey(filePath);
+  if (process.env.VERCEL === '1' && key) {
+    try {
+      const value = await kv.get(key);
+      if (value) return JSON.parse(value);
+    } catch (error) {
+      console.error(`KV read failed for ${key}:`, error);
+    }
+  }
+
   const targetPath = resolveStoragePath(filePath);
   try {
     if (fs.existsSync(targetPath)) {
@@ -127,7 +145,7 @@ function readJson(filePath, fallback) {
   try {
     if (fs.existsSync(filePath)) {
       const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-      writeJson(filePath, data);
+      await writeJson(filePath, data);
       return data;
     }
   } catch (error) {
@@ -137,7 +155,17 @@ function readJson(filePath, fallback) {
   return fallback;
 }
 
-function writeJson(filePath, data) {
+async function writeJson(filePath, data) {
+  const key = storageKey(filePath);
+  if (process.env.VERCEL === '1' && key) {
+    try {
+      await kv.set(key, JSON.stringify(data));
+      return key;
+    } catch (error) {
+      console.error(`KV write failed for ${key}:`, error);
+    }
+  }
+
   const targetPath = resolveStoragePath(filePath);
   try {
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
@@ -149,16 +177,16 @@ function writeJson(filePath, data) {
   }
 }
 
-function loadData() {
+async function loadData() {
   ensureDataFiles();
   return {
-    spares: readJson(SPARES_FILE, []),
-    inquiries: readJson(INQUIRIES_FILE, []),
-    settings: readJson(SETTINGS_FILE, {})
+    spares: await readJson(SPARES_FILE, []),
+    inquiries: await readJson(INQUIRIES_FILE, []),
+    settings: await readJson(SETTINGS_FILE, {})
   };
 }
 
-function persistJson(filePath, data) {
+async function persistJson(filePath, data) {
   return writeJson(filePath, data);
 }
 
@@ -296,11 +324,11 @@ async function buildEmailAttachment(imageUrl, fileName) {
   }
 }
 
-app.get('/', (req, res) => {
-  const { spares, inquiries, settings } = loadData();
+app.get('/', async (req, res) => {
+  const { spares, inquiries, settings } = await loadData();
   if (settings.analyticsEnabled) {
     settings.analyticsVisits = Number(settings.analyticsVisits || 0) + 1;
-    persistJson(SETTINGS_FILE, { ...settings, analyticsVisits: settings.analyticsVisits });
+    await persistJson(SETTINGS_FILE, { ...settings, analyticsVisits: settings.analyticsVisits });
   }
   const enrichedSpares = spares.map((spare) => ({
     ...spare,
@@ -316,11 +344,11 @@ app.get('/', (req, res) => {
   });
 });
 
-app.get('/products', (req, res) => {
-  const { spares, settings } = loadData();
+app.get('/products', async (req, res) => {
+  const { spares, settings } = await loadData();
   if (settings.analyticsEnabled) {
     settings.analyticsVisits = Number(settings.analyticsVisits || 0) + 1;
-    persistJson(SETTINGS_FILE, { ...settings, analyticsVisits: settings.analyticsVisits });
+    await persistJson(SETTINGS_FILE, { ...settings, analyticsVisits: settings.analyticsVisits });
   }
   const enrichedSpares = spares.map((spare) => ({
     ...spare,
@@ -333,17 +361,17 @@ app.get('/products', (req, res) => {
   });
 });
 
-app.get('/contact', (req, res) => {
-  const { settings } = loadData();
+app.get('/contact', async (req, res) => {
+  const { settings } = await loadData();
   if (settings.analyticsEnabled) {
     settings.analyticsVisits = Number(settings.analyticsVisits || 0) + 1;
-    persistJson(SETTINGS_FILE, { ...settings, analyticsVisits: settings.analyticsVisits });
+    await persistJson(SETTINGS_FILE, { ...settings, analyticsVisits: settings.analyticsVisits });
   }
   res.render('contact', { settings, submitted: req.query.submitted === '1' });
 });
 
 app.post('/contact', async (req, res) => {
-  const { settings } = loadData();
+  const { settings } = await loadData();
   if (req.body.website && req.body.website.trim()) {
     return res.redirect('/contact?submitted=1');
   }
@@ -365,7 +393,7 @@ app.post('/contact', async (req, res) => {
     createdAt: new Date().toISOString()
   };
 
-  const { inquiries } = loadData();
+  const { inquiries } = await loadData();
   const contactFingerprint = buildInquiryFingerprint('contact', request);
   const existingContactRequest = hasRecentDuplicateInquiry(inquiries, contactFingerprint);
   if (existingContactRequest) {
@@ -374,7 +402,7 @@ app.post('/contact', async (req, res) => {
 
   request.enquiryFingerprint = contactFingerprint;
   inquiries.unshift(request);
-  persistJson(INQUIRIES_FILE, inquiries);
+  await persistJson(INQUIRIES_FILE, inquiries);
 
   const imageHtml = attachments.length
     ? `<p><strong>Uploaded image:</strong></p><img src="cid:contact-image" alt="Uploaded contact image" style="max-width: 100%; max-height: 240px; border-radius: 10px;" />`
@@ -405,8 +433,8 @@ app.post('/contact', async (req, res) => {
   res.redirect('/contact?submitted=1');
 });
 
-app.get('/enquire/:id', (req, res) => {
-  const { spares, settings } = loadData();
+app.get('/enquire/:id', async (req, res) => {
+  const { spares, settings } = await loadData();
   const spare = spares.find((item) => item.id === req.params.id);
   if (!spare) {
     return res.status(404).send('Spare not found');
@@ -419,7 +447,7 @@ app.get('/enquire/:id', (req, res) => {
 });
 
 app.post('/enquire/:id', async (req, res) => {
-  const { spares, inquiries, settings } = loadData();
+  const { spares, inquiries, settings } = await loadData();
   if (req.body.website && req.body.website.trim()) {
     return res.redirect('/?submitted=1');
   }
@@ -452,7 +480,7 @@ app.post('/enquire/:id', async (req, res) => {
 
   enquiry.enquiryFingerprint = enquiryFingerprint;
   inquiries.unshift(enquiry);
-  persistJson(INQUIRIES_FILE, inquiries);
+  await persistJson(INQUIRIES_FILE, inquiries);
 
   const adminEmail = settings.adminEmail || process.env.ADMIN_EMAIL || 'sales.cnchardwares@gmail.com';
   const adminHtml = `
@@ -484,9 +512,9 @@ app.get('/admin/login', (req, res) => {
   res.render('admin-login', { error: '' });
 });
 
-app.post('/admin/login', (req, res) => {
+app.post('/admin/login', async (req, res) => {
   const password = req.body.password;
-  const { settings } = loadData();
+  const { settings } = await loadData();
   const expectedPassword = getAdminPassword(settings);
   if (password === expectedPassword) {
     req.session.adminAuthenticated = true;
@@ -501,9 +529,9 @@ app.get('/admin/logout', (req, res) => {
   });
 });
 
-app.get('/admin', (req, res) => {
+app.get('/admin', async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { spares, inquiries, settings } = loadData();
+  const { spares, inquiries, settings } = await loadData();
   res.render('admin', {
     spares,
     inquiries,
@@ -514,28 +542,28 @@ app.get('/admin', (req, res) => {
   });
 });
 
-app.get('/admin/company', (req, res) => {
+app.get('/admin/company', async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { settings } = loadData();
+  const { settings } = await loadData();
   res.render('admin-company', { settings });
 });
 
-app.get('/admin/spares', (req, res) => {
+app.get('/admin/spares', async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { spares, inquiries, settings } = loadData();
+  const { spares, inquiries, settings } = await loadData();
   res.render('admin-spares', { spares, inquiries, settings, editingSpare: null });
 });
 
-app.get('/admin/spares/:id/edit', (req, res) => {
+app.get('/admin/spares/:id/edit', async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { spares, inquiries, settings } = loadData();
+  const { spares, inquiries, settings } = await loadData();
   const editingSpare = spares.find((item) => item.id === req.params.id) || null;
   res.render('admin-spares', { spares, inquiries, settings, editingSpare });
 });
 
 app.post('/admin/spares', upload.single('imageFile'), async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { spares, settings } = loadData();
+  const { spares, settings } = await loadData();
   const spareId = req.body.id || `spare-${Date.now()}`;
   const updatedSpares = spares.filter((item) => item.id !== spareId);
   let imageUpload = null;
@@ -557,21 +585,21 @@ app.post('/admin/spares', upload.single('imageFile'), async (req, res) => {
     imagePublicId: imageUpload?.imagePublicId || req.body.imagePublicId || '',
     imageAlt: req.body.imageAlt || req.body.title
   });
-  persistJson(SPARES_FILE, updatedSpares);
+  await persistJson(SPARES_FILE, updatedSpares);
   res.redirect('/admin/spares');
 });
 
-app.post('/admin/spares/delete', (req, res) => {
+app.post('/admin/spares/delete', async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { spares } = loadData();
+  const { spares } = await loadData();
   const filtered = spares.filter((item) => item.id !== req.body.id);
-  persistJson(SPARES_FILE, filtered);
+  await persistJson(SPARES_FILE, filtered);
   res.redirect('/admin/spares');
 });
 
 app.post('/admin/settings', upload.single('logoFile'), async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const current = loadData().settings;
+  const current = (await loadData()).settings;
   let logoUrl = req.body.companyLogoUrl || current.companyLogoUrl || '';
   let logoPublicId = current.companyLogoPublicId || '';
 
@@ -607,30 +635,30 @@ app.post('/admin/settings', upload.single('logoFile'), async (req, res) => {
     companyLogoUrl: logoUrl,
     companyLogoPublicId: logoPublicId
   };
-  persistJson(SETTINGS_FILE, settings);
+  await persistJson(SETTINGS_FILE, settings);
   res.redirect('/admin/company');
 });
 
-app.post('/admin/analytics-toggle', (req, res) => {
+app.post('/admin/analytics-toggle', async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { settings } = loadData();
+  const { settings } = await loadData();
   const updatedSettings = {
     ...settings,
     analyticsEnabled: req.body.analyticsEnabled === 'on'
   };
-  persistJson(SETTINGS_FILE, updatedSettings);
+  await persistJson(SETTINGS_FILE, updatedSettings);
   res.redirect('/admin');
 });
 
-app.get('/admin/orders', (req, res) => {
+app.get('/admin/orders', async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { inquiries, settings } = loadData();
+  const { inquiries, settings } = await loadData();
   res.render('admin-orders', { inquiries, settings });
 });
 
 app.post('/admin/orders/:id/status', async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { inquiries, settings } = loadData();
+  const { inquiries, settings } = await loadData();
   const enquiry = inquiries.find((item) => item.id === req.params.id);
   if (!enquiry) {
     return res.redirect('/admin/orders');
@@ -638,7 +666,7 @@ app.post('/admin/orders/:id/status', async (req, res) => {
 
   enquiry.status = req.body.status;
   enquiry.updatedAt = new Date().toISOString();
-  persistJson(INQUIRIES_FILE, inquiries);
+  await persistJson(INQUIRIES_FILE, inquiries);
 
   const subject = `Order status updated: ${req.body.status}`;
   const html = `
@@ -652,23 +680,23 @@ app.post('/admin/orders/:id/status', async (req, res) => {
   res.redirect('/admin/orders');
 });
 
-app.post('/admin/orders/delete', (req, res) => {
+app.post('/admin/orders/delete', async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { inquiries } = loadData();
+  const { inquiries } = await loadData();
   const filtered = inquiries.filter((item) => item.id !== req.body.id);
-  persistJson(INQUIRIES_FILE, filtered);
+  await persistJson(INQUIRIES_FILE, filtered);
   res.redirect('/admin/orders');
 });
 
-app.get('/admin/password', (req, res) => {
+app.get('/admin/password', async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { settings } = loadData();
+  const { settings } = await loadData();
   res.render('admin-password', { settings, message: '', error: '' });
 });
 
-app.post('/admin/password', (req, res) => {
+app.post('/admin/password', async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { settings } = loadData();
+  const { settings } = await loadData();
   const currentPassword = req.body.currentPassword || '';
   const newPassword = req.body.newPassword || '';
   const confirmPassword = req.body.confirmPassword || '';
@@ -684,13 +712,13 @@ app.post('/admin/password', (req, res) => {
   }
 
   const updatedSettings = { ...settings, adminPassword: newPassword };
-  persistJson(SETTINGS_FILE, updatedSettings);
+  await persistJson(SETTINGS_FILE, updatedSettings);
   return res.render('admin-password', { settings: updatedSettings, message: 'Admin password updated successfully.', error: '' });
 });
 
-app.get('/admin/export-orders', (req, res) => {
+app.get('/admin/export-orders', async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { inquiries } = loadData();
+  const { inquiries } = await loadData();
   const rows = [
     ['Order ID', 'Customer Name', 'Mobile Number', 'Email', 'Company', 'GSTIN', 'Quantity', 'Spare', 'Status', 'Created At', 'Updated At']
   ];
