@@ -23,6 +23,9 @@
       <div class="card admin-card">
         <h3>Company Details</h3>
         <form method="post" action="/admin/settings" enctype="multipart/form-data">
+          <% if (storageWarning) { %>
+            <div class="alert alert-warning" style="margin-bottom: 1rem;"> <%= storageWarning %> </div>
+          <% } %>
           <div class="admin-grid">
             <div>
               <label>Company Name</label>

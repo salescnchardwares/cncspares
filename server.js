@@ -283,6 +283,20 @@ function getAdminPassword(settings) {
   return settings.adminPassword || process.env.ADMIN_PASSWORD || 'admin1234';
 }
 
+function formatAdminTimestamp(timestamp) {
+  if (!timestamp) return 'N/A';
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return 'Invalid date';
+  return date.toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+}
+
 function getTransporter(settings) {
   const smtpHost = settings.smtpHost || process.env.SMTP_HOST;
   const smtpUser = settings.smtpUser || process.env.SMTP_USER;
@@ -557,7 +571,10 @@ app.get('/admin', async (req, res) => {
 app.get('/admin/company', async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
   const { settings } = await loadData();
-  res.render('admin-company', { settings });
+  const storageWarning = process.env.VERCEL === '1' && !kv
+    ? 'Persistent storage is not configured on Vercel. Mail settings and Cloudinary details may reset after a cold start unless Vercel KV is enabled.'
+    : '';
+  res.render('admin-company', { settings, storageWarning });
 });
 
 app.get('/admin/spares', async (req, res) => {
@@ -629,23 +646,23 @@ app.post('/admin/settings', upload.single('logoFile'), async (req, res) => {
 
   const settings = {
     ...current,
-    companyName: req.body.companyName,
-    companyTagline: req.body.companyTagline,
-    companyDescription: req.body.companyDescription,
-    companyAddress: req.body.companyAddress,
-    companyPhone: req.body.companyPhone,
-    companyEmail: req.body.companyEmail,
-    adminEmail: req.body.adminEmail,
+    companyName: req.body.companyName || current.companyName,
+    companyTagline: req.body.companyTagline || current.companyTagline,
+    companyDescription: req.body.companyDescription || current.companyDescription,
+    companyAddress: req.body.companyAddress || current.companyAddress,
+    companyPhone: req.body.companyPhone || current.companyPhone,
+    companyEmail: req.body.companyEmail || current.companyEmail,
+    adminEmail: req.body.adminEmail || current.adminEmail,
     analyticsEnabled: req.body.analyticsEnabled === 'on',
-    smtpHost: req.body.smtpHost,
-    smtpUser: req.body.smtpUser,
-    smtpPass: req.body.smtpPass,
-    mailFrom: req.body.mailFrom,
-    cloudinaryCloudName: req.body.cloudinaryCloudName,
-    cloudinaryUploadPreset: req.body.cloudinaryUploadPreset,
-    cloudinaryFolder: req.body.cloudinaryFolder,
-    companyLogoUrl: logoUrl,
-    companyLogoPublicId: logoPublicId
+    smtpHost: req.body.smtpHost || current.smtpHost,
+    smtpUser: req.body.smtpUser || current.smtpUser,
+    smtpPass: req.body.smtpPass || current.smtpPass,
+    mailFrom: req.body.mailFrom || current.mailFrom,
+    cloudinaryCloudName: req.body.cloudinaryCloudName || current.cloudinaryCloudName,
+    cloudinaryUploadPreset: req.body.cloudinaryUploadPreset || current.cloudinaryUploadPreset,
+    cloudinaryFolder: req.body.cloudinaryFolder || current.cloudinaryFolder,
+    companyLogoUrl: logoUrl || current.companyLogoUrl,
+    companyLogoPublicId: logoPublicId || current.companyLogoPublicId
   };
   await persistJson(SETTINGS_FILE, settings);
   res.redirect('/admin/company');
@@ -665,7 +682,7 @@ app.post('/admin/analytics-toggle', async (req, res) => {
 app.get('/admin/orders', async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/admin/login');
   const { inquiries, settings } = await loadData();
-  res.render('admin-orders', { inquiries, settings });
+  res.render('admin-orders', { inquiries, settings, formatDate: formatAdminTimestamp });
 });
 
 app.post('/admin/orders/:id/status', async (req, res) => {

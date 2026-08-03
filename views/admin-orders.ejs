@@ -65,8 +65,8 @@
                   </form>
                 </td>
                 <td>
-                  <span class="small">Ordered: <%= enquiry.createdAt ? new Date(enquiry.createdAt).toLocaleString() : 'N/A' %></span><br />
-                  <span class="small">Updated: <%= enquiry.updatedAt ? new Date(enquiry.updatedAt).toLocaleString() : 'N/A' %></span>
+                  <span class="small">Ordered: <%= formatDate(enquiry.createdAt) %></span><br />
+                  <span class="small">Updated: <%= formatDate(enquiry.updatedAt) %></span>
                 </td>
                 <td>
                   <form method="post" action="/admin/orders/delete" class="admin-inline-form">
