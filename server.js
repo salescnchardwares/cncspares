@@ -5,6 +5,8 @@ const path = require('path');
 const nodemailer = require('nodemailer');
 const multer = require('multer');
 
+const FileStore = require('session-file-store')(session);
+
 const upload = multer({ storage: multer.memoryStorage() });
 
 const app = express();
@@ -26,14 +28,26 @@ const PRODUCT_SERVICES = [
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+app.set('trust proxy', 1);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
+  store: new FileStore({
+    path: path.join(DATA_DIR, 'sessions'),
+    reapInterval: 900,
+    ttl: 60 * 60 * 8
+  }),
   secret: process.env.SESSION_SECRET || 'cnc-spares-secret',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 1000 * 60 * 60 * 8 }
+  rolling: true,
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 8,
+    sameSite: 'lax',
+    httpOnly: true,
+    secure: process.env.SESSION_SECURE === 'true'
+  }
 }));
 
 function isWritableDir(dirPath) {
