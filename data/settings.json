@@ -5,7 +5,7 @@
   "companyTagline": "Your trusted source for CNC spare parts sales and service",
   "companyDescription": "",
   "companyAddress": "19A/7, Near RKS Forgings, Thottipalayam Pirivu, Coimbatore-641062.",
-  "companyPhone": "+91 93602 44928",
+  "companyPhone": "+91 9600520726",
   "companyEmail": "sales.cnchardwares@gmail.com",
   "adminEmail": "sales.cnchardwares@gmail.com",
   "smtpHost": "smtp.gmail.com",
@@ -14,5 +14,7 @@
   "mailFrom": "sales.cnchardwares@gmail.com",
   "cloudinaryCloudName": "s3gcegwe",
   "cloudinaryUploadPreset": "CNC Spare",
-  "cloudinaryFolder": ""
+  "cloudinaryFolder": "",
+  "companyLogoUrl": "https://res.cloudinary.com/s3gcegwe/image/upload/v1792911917/cnc-spares/jhfbegilnredqllesaxg.png",
+  "companyLogoPublicId": "cnc-spares/jhfbegilnredqllesaxg"
 }

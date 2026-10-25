@@ -3,72 +3,168 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><%= settings.companyName %> | CNC Spare Enquiries</title>
+    <title><%= settings.companyName %> | CNC Spare Enquiries &amp; Service</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="stylesheet" href="/styles.css" />
+
+    <!-- Open Graph / WhatsApp / Facebook / LinkedIn Link Sharing Preview -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="<%= settings.companyName %> | CNC Spares Sales &amp; Service" />
+    <meta property="og:description" content="<%= settings.companyTagline || 'Reliable CNC spare parts sales and engineering support for your machines.' %>" />
+    <meta property="og:image" content="<%= settings.companyLogoUrl || '/logo.svg' %>" />
+    <meta property="og:image:alt" content="<%= settings.companyName %> Logo" />
+
+    <!-- Twitter Cards Preview -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="<%= settings.companyName %> | CNC Spares Sales &amp; Service" />
+    <meta name="twitter:description" content="<%= settings.companyTagline || 'Reliable CNC spare parts sales and engineering support for your machines.' %>" />
+    <meta name="twitter:image" content="<%= settings.companyLogoUrl || '/logo.svg' %>" />
   </head>
   <body>
+    <!-- Main Header -->
     <header>
       <div class="container navbar">
-        <a href="/" class="brand"><%= settings.companyName %></a>
-        <div class="nav-links">
-          <a href="/">Home</a>
-          <a href="/products">Products</a>
-          <a href="#about">About Us</a>
-          <a href="/contact">Contact Us</a>
+        <a href="/" class="brand-wrapper">
+          <div class="brand-logo-wrap">
+            <img src="<%= settings.companyLogoUrl || '/logo.svg' %>" alt="<%= settings.companyName %> logo" class="brand-logo-img" />
+          </div>
+          <span class="brand"><%= settings.companyName %></span>
+        </a>
+
+        <nav class="nav-links">
+          <a class="nav-link active" href="/">Home</a>
+          <a class="nav-link" href="/products">Products</a>
+          <a class="nav-link" href="#about">About Us</a>
+          <a class="nav-link" href="/contact">Contact Us</a>
+        </nav>
+
+        <div class="nav-actions">
+          <a href="tel:<%= settings.companyPhone %>" class="nav-cta-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+            </svg>
+            <span>Call Now</span>
+          </a>
+          <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </button>
         </div>
       </div>
     </header>
 
+    <!-- Mobile Nav Drawer -->
+    <div class="mobile-nav-drawer" id="mobileDrawer">
+      <a class="nav-link active" href="/">Home</a>
+      <a class="nav-link" href="/products">Products</a>
+      <a class="nav-link" href="#about">About Us</a>
+      <a class="nav-link" href="/contact">Contact Us</a>
+      <div class="mobile-contact-card">
+        <p><strong>Direct Helpline:</strong></p>
+        <p><a href="tel:<%= settings.companyPhone %>"><%= settings.companyPhone %></a></p>
+        <p><strong>Email Support:</strong></p>
+        <p><a href="mailto:<%= settings.companyEmail %>"><%= settings.companyEmail %></a></p>
+        <a href="/contact" class="btn btn-primary btn-block" style="margin-top: 0.8rem;">Send Direct Enquiry</a>
+      </div>
+    </div>
+
+    <!-- Hero Section -->
     <section class="hero">
       <div class="container hero-card">
         <div class="hero-content">
-          <div>
-            <h1>Reliable CNC spare parts sales and service for your machines.</h1>
-            <p><%= settings.companyTagline %></p>
-            <p>Share your requirement, and our team will respond with the right spare part guidance, service support, and availability details.</p>
+          <div class="hero-eyebrow">
+            <span class="pulse-dot"></span>
+            Verified CNC Spares &amp; Engineering Support
+          </div>
+          <h1>Reliable CNC spare parts sales and service for your machines.</h1>
+          <p class="hero-tagline"><%= settings.companyTagline %></p>
+          <p class="hero-desc">Share your requirement, and our technical team will respond with the right spare part guidance, compatibility verification, and direct wholesale pricing.</p>
+          
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#products">
+              <span>Browse Spares</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            </a>
+            <a class="btn btn-outline-white" href="/contact">
+              <span>Custom Part Enquiry</span>
+            </a>
+          </div>
+
+          <div class="hero-trust-strip">
+            <div class="trust-item">
+              <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+              <span>100% Genuine Components</span>
+            </div>
+            <div class="trust-item">
+              <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+              <span>Fast Pan-India Dispatch</span>
+            </div>
+            <div class="trust-item">
+              <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+              <span>Trained Fitment Support</span>
+            </div>
           </div>
         </div>
+
         <div class="hero-side">
-          <% if (settings.companyLogoUrl) { %>
-            <div class="hero-logo-card">
-              <img class="hero-logo" src="<%= settings.companyLogoUrl %>" alt="<%= settings.companyName %> logo" />
+          <div class="hero-logo-card">
+            <div style="background: #ffffff; border-radius: var(--radius-lg); padding: 1.25rem; display: flex; align-items: center; justify-content: center; width: 100%; box-shadow: var(--shadow-sm); margin-bottom: 1rem;">
+              <img class="hero-logo" src="<%= settings.companyLogoUrl || '/logo.svg' %>" alt="<%= settings.companyName %> logo" style="max-height: 130px; width: auto; object-fit: contain; margin: 0;" />
             </div>
-          <% } %>
+            <div style="text-align: center; margin-bottom: 0.75rem;">
+              <strong style="color: #ffffff; font-size: 1.15rem; display: block;"><%= settings.companyName %></strong>
+              <span style="color: #94a3b8; font-size: 0.85rem;"><%= settings.companyTagline || 'Certified CNC Spares & Engineering Support' %></span>
+            </div>
+            <div class="cnc-stats-row">
+              <div class="cnc-stat-box">
+                <span class="cnc-stat-num">Fast</span>
+                <span class="cnc-stat-lbl">Dispatch</span>
+              </div>
+              <div class="cnc-stat-box">
+                <span class="cnc-stat-num">100%</span>
+                <span class="cnc-stat-lbl">Verified</span>
+              </div>
+              <div class="cnc-stat-box">
+                <span class="cnc-stat-num">Direct</span>
+                <span class="cnc-stat-lbl">Rates</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
+
     <div class="container">
       <% if (submitted) { %>
-        <div class="alert">Your enquiry has been received. We will contact you shortly.</div>
+        <div class="alert reveal">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+          <div>
+            <strong>Enquiry Received Successfully!</strong>
+            <p style="margin: 0; font-size: 0.92rem;">Our engineering support desk will review your requirements and contact you with availability and quotations shortly.</p>
+          </div>
+        </div>
       <% } %>
     </div>
 
-    <section id="about" class="section">
+    <!-- Products & Services Section -->
+    <section class="section section-alt">
       <div class="container">
-        <div class="card spare-card reveal">
-          <h2>About <%= settings.companyName %></h2>
-          <p><%= settings.companyDescription %></p>
-          <div class="feature-strip">
-            <div><strong>Fast support</strong><br />Quick responses for urgent machine requirements.</div>
-            <div><strong>Reliable parts</strong><br />Quality components and dependable service.</div>
-            <div><strong>Affordable pricing</strong><br />Best price for spare parts without compromising quality.</div>
-          </div>
-          <p><strong>Address:</strong> <%= settings.companyAddress %></p>
-          <p><strong>Phone:</strong> <%= settings.companyPhone %></p>
-          <p><strong>Email:</strong> <%= settings.companyEmail %></p>
+        <div class="section-header centered">
+          <span class="section-eyebrow">Comprehensive Solutions</span>
+          <h2>Products &amp; Services</h2>
+          <p class="muted">We support machine shops, toolrooms, and high-volume manufacturing lines with dependable industrial components, repair assistance, and maintenance engineering.</p>
         </div>
 
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="container">
-        <h2>Products & Services</h2>
-        <p class="muted">We support CNC operations with dependable industrial components, repair assistance, and maintenance services.</p>
         <div class="services-grid">
           <% services.forEach(function(service) { %>
-            <div class="card service-card reveal">
+            <div class="service-card reveal">
+              <div class="service-icon-wrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                </svg>
+              </div>
               <h3><%= service.title %></h3>
               <p><%= service.description %></p>
             </div>
@@ -77,58 +173,198 @@
       </div>
     </section>
 
+    <!-- Featured Products Section -->
     <section id="products" class="section">
       <div class="container">
-        <h2>Featured Products</h2>
-        <p class="muted">Rates are not listed here. Please use the enquiry button below each part to request details and availability.</p>
+        <div class="section-header">
+          <span class="section-eyebrow">Spares Inventory</span>
+          <h2>Featured Products</h2>
+          <p class="muted">Wholesale pricing available on request. Click the enquiry button on any part to receive instant compatibility confirmation and availability.</p>
+        </div>
+
         <div class="grid">
           <% spares.slice(0, 3).forEach(function(spare) { %>
-            <div class="card spare-card reveal">
-              <% if (spare.imageSrc) { %>
-                <img src="<%= spare.imageSrc %>" alt="<%= spare.imageAlt || spare.title %>" />
-              <% } %>
-              <span class="badge"><%= spare.category %></span>
-              <h3><%= spare.title %></h3>
-              <p><%= spare.details %></p>
-              <a class="btn btn-primary" href="/enquire/<%= spare.id %>">Enquire Now</a>
+            <div class="card spare-card reveal" data-category="<%= spare.category %>">
+              <div class="spare-image-wrap">
+                <% if (spare.imageSrc) { %>
+                  <img src="<%= spare.imageSrc %>" alt="<%= spare.imageAlt || spare.title %>" loading="lazy" />
+                <% } else { %>
+                  <div class="spare-image-placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <circle cx="12" cy="12" r="3"></circle>
+                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                    <span style="font-size: 0.8rem; font-weight: 600;">CNC Hardware</span>
+                  </div>
+                <% } %>
+              </div>
+              <div class="spare-card-body">
+                <span class="badge"><%= spare.category %></span>
+                <h3><%= spare.title %></h3>
+                <p><%= spare.details %></p>
+              </div>
+              <div class="spare-card-footer">
+                <a class="btn btn-primary btn-block" href="/enquire/<%= spare.id %>">
+                  <span>Enquire Now</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                </a>
+              </div>
             </div>
           <% }) %>
         </div>
-         <div class="card hero-panel featured-panel">
-          <h3>Why choose us</h3>
-          <ul>
-            <li>Fast requirement handling</li>
-            <li>Trained support for compatible spares</li>
-            <li>Simple enquiry process for workshops and factories</li>
-          </ul>
-        </div>
+
         <div class="section-actions">
-          <a class="btn btn-secondary" href="/products">Show more</a>
+          <a class="btn btn-secondary" href="/products" style="padding: 0.85rem 2rem;">
+            <span>Browse Complete Catalog</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+
+        <!-- Benefits Card (Preserving 'featured-panel' class for test assertions) -->
+        <div class="featured-panel">
+          <h3>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            Why Choose <%= settings.companyName %>
+          </h3>
+          <ul>
+            <li>
+              <div>
+                <strong>Fast requirement handling:</strong>
+                <div>Same-day quotation turnaround with real-time stock verification for minimum machine downtime.</div>
+              </div>
+            </li>
+            <li>
+              <div>
+                <strong>Trained support for compatible spares:</strong>
+                <div>Technical experts to assist in model matching, connector configurations, and replacements.</div>
+              </div>
+            </li>
+            <li>
+              <div>
+                <strong>Direct wholesale pricing:</strong>
+                <div>Competitive industrial rates designed for manufacturing units, CNC workshops, and service engineers.</div>
+              </div>
+            </li>
+          </ul>
         </div>
       </div>
     </section>
 
+    <!-- About Section -->
+    <section id="about" class="section section-alt">
+      <div class="container">
+        <div class="about-card reveal">
+          <span class="section-eyebrow">About Our Company</span>
+          <h2><%= settings.companyName %></h2>
+          <p class="about-lead"><%= settings.companyDescription || 'We are an established industrial solutions provider specializing in precision CNC machine spares, servo drives, encoder communication systems, and expert engineering assistance. With years of machine tooling experience, we ensure your operations maintain maximum uptime.' %></p>
+          
+          <div class="feature-strip">
+            <div>
+              <strong>Fast Technical Support</strong>
+              <span>Dedicated response within hours for urgent production line breakdowns.</span>
+            </div>
+            <div>
+              <strong>Reliable Precision Parts</strong>
+              <span>Rigorous quality checks on all mechanical, optical, and electrical components.</span>
+            </div>
+            <div>
+              <strong>Competitive Wholesale Pricing</strong>
+              <span>Direct supply chain with the best market price without compromising durability.</span>
+            </div>
+          </div>
+
+          <div class="contact-quick-cards">
+            <div class="contact-quick-card">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              <div>
+                <strong>Address:</strong>
+                <p><%= settings.companyAddress %></p>
+              </div>
+            </div>
+            <div class="contact-quick-card">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+              <div>
+                <strong>Phone / Support:</strong>
+                <a href="tel:<%= settings.companyPhone %>"><%= settings.companyPhone %></a>
+                <div class="small">Monday to Friday 09:00 AM to 05:30PM</div>
+              </div>
+            </div>
+            <div class="contact-quick-card">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+              <div>
+                <strong>Email:</strong>
+                <a href="mailto:<%= settings.companyEmail %>"><%= settings.companyEmail %></a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
     <footer class="footer">
       <div class="container footer-inner">
-        <div>
+        <div class="footer-brand">
           <h3><%= settings.companyName %></h3>
-          <p>Delivering dependable CNC spare parts sales and service for workshops and manufacturing units.</p>
+          <p>Delivering dependable CNC spare parts sales and engineering support for workshops and manufacturing units nationwide.</p>
         </div>
         
-        <div>
-          <p><strong>Contact</strong></p>
-          <p><%= settings.companyPhone %></p>
-          <p><%= settings.companyEmail %></p>
+        <div class="footer-col">
+          <h4>Navigation</h4>
+          <ul class="footer-links-list">
+            <li><a href="/">Home</a></li>
+            <li><a href="/products">All Products</a></li>
+            <li><a href="#about">About Us</a></li>
+            <li><a href="/contact">Contact &amp; Enquiry</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Contact Desk</h4>
+          <div class="footer-contact-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+            <div>
+              <a href="tel:<%= settings.companyPhone %>"><%= settings.companyPhone %></a>
+              <div class="small" style="color: #94a3b8; font-size: 0.82rem;">Monday to Friday 09:00 AM to 05:30PM</div>
+            </div>
+          </div>
+          <div class="footer-contact-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            <a href="mailto:<%= settings.companyEmail %>"><%= settings.companyEmail %></a>
+          </div>
+          <div class="footer-contact-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <span><%= settings.companyAddress %></span>
+          </div>
         </div>
       </div>
-      <div class="container footer-copyright">
-        <p>© <%= new Date().getFullYear() %> <%= settings.companyName %>. All rights reserved.</p>
-      </div>
-      <center>
-      <div class="footer-bottom">
-          <a class="footer-link" href="https://www.netcraftstudios.org" target="_blank" rel="noopener noreferrer">Developed by Netcraft Studio</a>
+
+      <div class="container footer-bottom-divider">
+        <div class="footer-copyright">
+          © <%= new Date().getFullYear() %> <%= settings.companyName %>. All rights reserved.
         </div>
-        </center>
+        <div class="footer-developer-credit">
+          <a href="https://www.netcraftstudios.org" target="_blank" rel="noopener noreferrer">Developed by Netcraft Studio</a>
+        </div>
+      </div>
     </footer>
+
+    <!-- Mobile Quick Action Sticky Bar -->
+    <div class="mobile-bottom-bar">
+      <div class="mobile-bottom-bar-inner">
+        <a href="tel:<%= settings.companyPhone %>" class="mobile-action-btn mobile-call-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+          <span>Call Support</span>
+        </a>
+        <a href="/contact" class="mobile-action-btn mobile-enquiry-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+          <span>Send Enquiry</span>
+        </a>
+      </div>
+    </div>
+
+    <script src="/app.js"></script>
   </body>
 </html>

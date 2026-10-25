@@ -3,81 +3,145 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Orders | Admin</title>
+    <title>Customer Enquiries &amp; Orders | Admin Portal</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="stylesheet" href="/site.css" />
+    <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body>
-    <div class="container" style="padding: 2rem 0 3rem;">
-      <div class="navbar" style="margin-bottom: 1rem;">
-        <div class="brand">Admin Dashboard</div>
-        <div class="nav-links">
-          <a class="btn btn-secondary admin-nav-btn" href="/admin/company">Company</a>
-          <a class="btn btn-secondary admin-nav-btn" href="/admin/spares">Spares</a>
-          <a class="btn btn-secondary admin-nav-btn" href="/admin/orders">Orders</a>
-          <a class="btn btn-secondary admin-nav-btn" href="/admin/password">Password</a>
-          <a class="btn btn-secondary admin-nav-btn" href="/admin/logout">Logout</a>
+  <body style="background: var(--bg);">
+    <div class="container" style="padding: 2rem 0 4rem;">
+      <!-- Admin Header Bar -->
+      <div class="admin-header-bar">
+        <div class="admin-brand">
+          <div class="brand-logo-wrap" style="width: 38px; height: 38px;">
+            <img src="<%= settings.companyLogoUrl || '/logo.svg' %>" alt="<%= settings.companyName %> logo" class="brand-logo-img" />
+          </div>
+          <span><%= settings.companyName %> Admin</span>
         </div>
+
+        <nav class="admin-nav-links">
+          <a class="btn admin-nav-btn" href="/Updates">Dashboard</a>
+          <a class="btn admin-nav-btn" href="/Updates/company">Company Details</a>
+          <a class="btn admin-nav-btn" href="/Updates/spares">Manage Spares</a>
+          <a class="btn admin-nav-btn active" href="/Updates/orders">Enquiries &amp; Orders</a>
+          <a class="btn admin-nav-btn" href="/Updates/password">Security</a>
+          <a class="btn admin-nav-btn logout" href="/Updates/logout">Logout</a>
+        </nav>
       </div>
 
-      <div class="card admin-card">
+      <!-- Enquiries Card -->
+      <div class="card admin-card reveal">
+        <% if (typeof updated !== 'undefined' && updated) { %>
+          <div class="alert reveal" style="margin-bottom: 1.25rem;">
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            <div>
+              <strong>Order Status Updated!</strong>
+              <div style="font-size: 0.9rem;">The new status has been saved and an update notification email was dispatched to the customer's email address.</div>
+            </div>
+          </div>
+        <% } %>
+
         <div class="admin-section-header">
-          <h3>Enquiries and Order Status</h3>
-          <a class="btn btn-secondary export-btn" href="/admin/export-orders">Export to CSV</a>
+          <div>
+            <h3>Enquiries &amp; Customer Orders (<%= inquiries.length %>)</h3>
+            <p class="muted" style="margin: 0; font-size: 0.9rem;">Review submitted spare requests, update fulfillment status, and export to CSV.</p>
+          </div>
+          <a class="btn btn-secondary btn-sm export-btn" href="/Updates/export-orders">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            <span>Export to CSV</span>
+          </a>
         </div>
-        <table class="order-table">
-          <thead>
-            <tr>
-              <th>Order / Customer</th>
-              <th>Product</th>
-              <th>Status</th>
-              <th>Dates</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% inquiries.forEach(function(enquiry) { %>
-              <tr>
-                <td>
-                  <strong><%= enquiry.customerName %></strong><br />
-                  <span class="small">Phone: <%= enquiry.mobileNumber %></span><br />
-                  <span class="small">Email: <%= enquiry.emailId %></span><br />
-                  <span class="small">Company: <%= enquiry.companyName %></span><br />
-                  <span class="small">GSTIN: <%= enquiry.gstinNumber %></span>
-                </td>
-                <td>
-                  <strong><%= enquiry.spareTitle %></strong><br />
-                  <span class="small">Quantity: <%= enquiry.quantity %></span>
-                </td>
-                <td>
-                  <strong><%= enquiry.status %></strong>
-                  <form method="post" action="/admin/orders/<%= enquiry.id %>/status">
-                    <label>Update</label>
-                    <select name="status">
-                      <option value="Pending" <%= enquiry.status === 'Pending' ? 'selected' : '' %>>Pending</option>
-                      <option value="Confirmed" <%= enquiry.status === 'Confirmed' ? 'selected' : '' %>>Confirmed</option>
-                      <option value="Packed" <%= enquiry.status === 'Packed' ? 'selected' : '' %>>Packed</option>
-                      <option value="Completed" <%= enquiry.status === 'Completed' ? 'selected' : '' %>>Completed</option>
-                    </select>
-                    <div class="form-actions">
-                      <button class="btn btn-primary" type="submit">Update</button>
-                    </div>
-                  </form>
-                </td>
-                <td>
-                  <span class="small">Ordered: <%= enquiry.createdAt ? new Date(enquiry.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A' %></span><br />
-                  <span class="small">Updated: <%= enquiry.updatedAt ? new Date(enquiry.updatedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A' %></span>
-                </td>
-                <td>
-                  <form method="post" action="/admin/orders/delete" class="admin-inline-form">
-                    <input type="hidden" name="id" value="<%= enquiry.id %>" />
-                    <button class="btn btn-secondary" type="submit">Delete Order</button>
-                  </form>
-                </td>
-              </tr>
-            <% }) %>
-          </tbody>
-        </table>
+
+        <% if (inquiries.length === 0) { %>
+          <div style="text-align: center; padding: 3rem 1.5rem; color: var(--text-muted);">
+            <svg style="width: 48px; height: 48px; margin: 0 auto 1rem; color: #94a3b8;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+            </svg>
+            <h4 style="font-size: 1.15rem; font-weight: 700; color: var(--primary); margin-bottom: 0.35rem;">No enquiries yet</h4>
+            <p style="font-size: 0.9rem; margin: 0;">Incoming requests from customers will appear here.</p>
+          </div>
+        <% } else { %>
+          <div class="table-responsive">
+            <table class="order-table">
+              <thead>
+                <tr>
+                  <th>Order / Customer</th>
+                  <th>Product / Requirement</th>
+                  <th>Status &amp; Update</th>
+                  <th>Timestamps</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% inquiries.forEach(function(enquiry) { %>
+                  <tr>
+                    <td>
+                      <strong style="color: var(--primary); font-size: 1rem;"><%= enquiry.customerName %></strong><br />
+                      <span class="small">📞 <a href="tel:<%= enquiry.mobileNumber %>" style="color: var(--secondary); font-weight: 600;"><%= enquiry.mobileNumber %></a></span><br />
+                      <span class="small">✉️ <a href="mailto:<%= enquiry.emailId %>" style="color: var(--secondary);"><%= enquiry.emailId %></a></span><br />
+                      <% if (enquiry.companyName && enquiry.companyName !== 'Not provided') { %>
+                        <span class="small">🏢 <strong>Company:</strong> <%= enquiry.companyName %></span><br />
+                      <% } %>
+                      <% if (enquiry.gstinNumber && enquiry.gstinNumber !== 'Not provided') { %>
+                        <span class="small">🏷️ <strong>GSTIN:</strong> <%= enquiry.gstinNumber %></span>
+                      <% } %>
+                    </td>
+
+                    <td>
+                      <strong style="color: var(--primary);"><%= enquiry.spareTitle || 'General Requirement' %></strong><br />
+                      <% if (enquiry.quantity) { %>
+                        <span class="badge" style="margin-top: 0.25rem;">Qty: <%= enquiry.quantity %></span><br />
+                      <% } %>
+                      <% if (enquiry.description) { %>
+                        <p class="small" style="margin-top: 0.4rem; color: var(--text-muted); line-height: 1.4;"><%= enquiry.description %></p>
+                      <% } %>
+                    </td>
+
+                    <td>
+                      <% 
+                        let statusClass = 'status-pending';
+                        if (enquiry.status === 'Confirmed') statusClass = 'status-confirmed';
+                        if (enquiry.status === 'Packed') statusClass = 'status-packed';
+                        if (enquiry.status === 'Completed') statusClass = 'status-completed';
+                      %>
+                      <div style="margin-bottom: 0.6rem;">
+                        <span class="status-badge <%= statusClass %>"><%= enquiry.status || 'Pending' %></span>
+                      </div>
+                      <form method="post" action="/Updates/orders/<%= enquiry.id %>/status" style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+                        <select name="status" style="padding: 0.35rem 0.65rem; font-size: 0.85rem; width: auto; min-width: 120px;">
+                          <option value="Pending" <%= enquiry.status === 'Pending' ? 'selected' : '' %>>Pending</option>
+                          <option value="Confirmed" <%= enquiry.status === 'Confirmed' ? 'selected' : '' %>>Confirmed</option>
+                          <option value="Packed" <%= enquiry.status === 'Packed' ? 'selected' : '' %>>Packed</option>
+                          <option value="Completed" <%= enquiry.status === 'Completed' ? 'selected' : '' %>>Completed</option>
+                        </select>
+                        <button class="btn btn-primary btn-sm" type="submit" style="padding: 0.35rem 0.75rem; min-height: 32px; font-size: 0.82rem;">Update</button>
+                      </form>
+                    </td>
+
+                    <td>
+                      <span class="small" style="display: block; margin-bottom: 0.25rem;">
+                        <strong>Received:</strong><br />
+                        <%= enquiry.createdAt ? new Date(enquiry.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A' %>
+                      </span>
+                      <span class="small" style="display: block;">
+                        <strong>Updated:</strong><br />
+                        <%= enquiry.updatedAt ? new Date(enquiry.updatedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A' %>
+                      </span>
+                    </td>
+
+                    <td>
+                      <form method="post" action="/Updates/orders/delete" class="admin-inline-form" onsubmit="return confirm('Are you sure you want to delete this enquiry record?');">
+                        <input type="hidden" name="id" value="<%= enquiry.id %>" />
+                        <button class="btn btn-sm" type="submit" style="background: var(--danger-soft); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2);">Delete</button>
+                      </form>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
       </div>
     </div>
   </body>

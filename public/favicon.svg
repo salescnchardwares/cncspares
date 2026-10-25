@@ -1,13 +1,48 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
-  <!-- Left wrench tool -->
-  <path d="M 50 80 Q 50 50 80 50 Q 110 50 110 80 Q 110 110 80 110 Q 70 110 65 105" fill="none" stroke="#2d0a4e" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M 70 105 L 85 120" stroke="#2d0a4e" stroke-width="16" stroke-linecap="round"/>
-  
-  <!-- Right wrench tool -->
-  <path d="M 190 80 Q 190 50 220 50 Q 250 50 250 80 Q 250 110 220 110 Q 210 110 205 105" fill="none" stroke="#2d0a4e" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M 210 115 L 225 130" stroke="#2d0a4e" stroke-width="16" stroke-linecap="round"/>
-  
-  <!-- Connecting element -->
-  <circle cx="150" cy="80" r="8" fill="#2d0a4e"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="gearGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0c2340" />
+      <stop offset="100%" stop-color="#1e3e62" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f97316" />
+      <stop offset="100%" stop-color="#ea580c" />
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Rounded Shield / Frame -->
+  <rect x="10" y="10" width="180" height="180" rx="36" fill="url(#gearGrad)" />
+  <rect x="10" y="10" width="180" height="180" rx="36" fill="none" stroke="#f97316" stroke-width="4" stroke-opacity="0.3" />
+
+  <!-- Industrial Gear Ring -->
+  <g fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" transform="translate(100, 100)">
+    <!-- Gear Teeth -->
+    <path d="
+      M -20 -58 L 20 -58 L 16 -46 L -16 -46 Z
+      M 46 -16 L 58 -20 L 58 20 L 46 16 Z
+      M 16 46 L 20 58 L -20 58 L -16 46 Z
+      M -46 16 L -58 20 L -58 -20 L -46 -16 Z
+      M 28 -38 L 48 -44 L 44 -28 L 26 -24 Z
+      M 38 28 L 44 48 L 28 44 L 24 26 Z
+      M -28 38 L -48 44 L -44 28 L -26 24 Z
+      M -38 -28 L -44 -48 L -28 -44 L -24 -26 Z
+    " fill="#ffffff" fill-opacity="0.1" />
+    <circle cx="0" cy="0" r="46" stroke="#ffffff" stroke-width="6" />
+  </g>
+
+  <!-- CNC Spindle Bit / Precision Tool Accent -->
+  <g transform="translate(100, 100)">
+    <!-- Central Hub -->
+    <circle cx="0" cy="0" r="28" fill="url(#accentGrad)" stroke="#ffffff" stroke-width="3.5" />
+    <!-- Spindle / Drill Flutes -->
+    <path d="M -8 -16 L 0 -22 L 8 -16 L 4 0 L 0 6 L -4 0 Z" fill="#ffffff" />
+    <path d="M 0 6 L 0 16" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+    <circle cx="0" cy="0" r="5" fill="#0c2340" />
+    
+    <!-- Precision Crosshairs -->
+    <line x1="-36" y1="0" x2="-28" y2="0" stroke="#f97316" stroke-width="3" stroke-linecap="round" />
+    <line x1="28" y1="0" x2="36" y2="0" stroke="#f97316" stroke-width="3" stroke-linecap="round" />
+    <line x1="0" y1="-36" x2="0" y2="-28" stroke="#f97316" stroke-width="3" stroke-linecap="round" />
+    <line x1="0" y1="28" x2="0" y2="36" stroke="#f97316" stroke-width="3" stroke-linecap="round" />
+  </g>
 </svg>

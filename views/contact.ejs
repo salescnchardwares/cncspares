@@ -3,50 +3,167 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Contact Us | <%= settings.companyName %></title>
+    <title>Contact Us &amp; Spare Enquiry | <%= settings.companyName %></title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="stylesheet" href="/site.css" />
+    <link rel="stylesheet" href="/styles.css" />
+
+    <!-- Open Graph / WhatsApp / Facebook Link Sharing Preview -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Contact Us &amp; Spare Enquiry | <%= settings.companyName %>" />
+    <meta property="og:description" content="Reach our engineering support desk for CNC parts, emergency maintenance, and quotation requests." />
+    <meta property="og:image" content="<%= settings.companyLogoUrl || '/logo.svg' %>" />
+    <meta property="og:image:alt" content="<%= settings.companyName %> Logo" />
+
+    <!-- Twitter Cards Preview -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Contact Us &amp; Spare Enquiry | <%= settings.companyName %>" />
+    <meta name="twitter:description" content="Reach our engineering support desk for CNC parts, emergency maintenance, and quotation requests." />
+    <meta name="twitter:image" content="<%= settings.companyLogoUrl || '/logo.svg' %>" />
   </head>
   <body>
+    <!-- Main Header -->
     <header>
       <div class="container navbar">
-        <a href="/" class="brand"><%= settings.companyName %></a>
-        <div class="nav-links">
-          <a href="/">Home</a>
-          <a href="/products">Products</a>
-          <a href="/contact">Contact Us</a>
+        <a href="/" class="brand-wrapper">
+          <div class="brand-logo-wrap">
+            <img src="<%= settings.companyLogoUrl || '/logo.svg' %>" alt="<%= settings.companyName %> logo" class="brand-logo-img" />
+          </div>
+          <span class="brand"><%= settings.companyName %></span>
+        </a>
+
+        <nav class="nav-links">
+          <a class="nav-link" href="/">Home</a>
+          <a class="nav-link" href="/products">Products</a>
+          <a class="nav-link" href="/#about">About Us</a>
+          <a class="nav-link active" href="/contact">Contact Us</a>
+        </nav>
+
+        <div class="nav-actions">
+          <a href="tel:<%= settings.companyPhone %>" class="nav-cta-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+            </svg>
+            <span>Call Now</span>
+          </a>
+          <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </button>
         </div>
       </div>
     </header>
 
+    <!-- Mobile Nav Drawer -->
+    <div class="mobile-nav-drawer" id="mobileDrawer">
+      <a class="nav-link" href="/">Home</a>
+      <a class="nav-link" href="/products">Products</a>
+      <a class="nav-link" href="/#about">About Us</a>
+      <a class="nav-link active" href="/contact">Contact Us</a>
+      <div class="mobile-contact-card">
+        <p><strong>Direct Helpline:</strong></p>
+        <p><a href="tel:<%= settings.companyPhone %>"><%= settings.companyPhone %></a></p>
+        <p><strong>Email Support:</strong></p>
+        <p><a href="mailto:<%= settings.companyEmail %>"><%= settings.companyEmail %></a></p>
+        <a href="/contact" class="btn btn-primary btn-block" style="margin-top: 0.8rem;">Send Direct Enquiry</a>
+      </div>
+    </div>
+
+    <!-- Page Header Banner -->
+    <div style="background: linear-gradient(135deg, #071526 0%, #0c2340 100%); color: #ffffff; padding: 2.75rem 0 2.25rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
+      <div class="container">
+        <div class="hero-eyebrow" style="margin-bottom: 0.75rem;">
+          <span class="pulse-dot"></span>
+          Direct Support Desk
+        </div>
+        <h1 style="font-size: clamp(1.8rem, 3.5vw, 2.5rem); font-weight: 800; letter-spacing: -0.025em; margin-bottom: 0.5rem;">Contact <%= settings.companyName %></h1>
+        <p style="color: #cbd5e1; max-width: 680px; font-size: 1.05rem;">Looking for a hard-to-find CNC spare part, emergency repair assistance, or volume supply quotation? Reach out directly below.</p>
+      </div>
+    </div>
+
     <section class="section">
       <div class="container">
-        <div class="hero-card">
-          <div class="card spare-card reveal">
-            <h2>Contact <%= settings.companyName %></h2>
-            <p><%= settings.companyDescription %></p>
-            <p>We provide quality service and the best price for spare parts, with dependable support for CNC maintenance, upgrades, and urgent replacements.</p>
-            <p><strong>Phone:</strong> <%= settings.companyPhone %></p>
-            <p><strong>Email:</strong> <%= settings.companyEmail %></p>
-            <p><strong>Address:</strong> <%= settings.companyAddress %></p>
+        <% if (submitted) { %>
+          <div class="alert reveal" style="margin-bottom: 2rem;">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+            <div>
+              <strong>Your request has been submitted successfully.</strong>
+              <p style="margin: 0; font-size: 0.92rem;">Our technical team has received your details and will get back to you with pricing and availability shortly.</p>
+            </div>
           </div>
-          <div class="card spare-card reveal">
-            <h3>Share your spare requirement</h3>
-            <% if (submitted) { %>
-              <div class="alert">Your request has been submitted successfully. We will contact you shortly.</div>
-            <% } %>
+        <% } %>
+
+        <div class="hero-card" style="align-items: flex-start; gap: 2rem;">
+          <!-- Left: Contact Details Card -->
+          <div class="card spare-card reveal" style="padding: 2rem;">
+            <span class="section-eyebrow">Direct Contact</span>
+            <h2>Get in Touch</h2>
+            <p><%= settings.companyDescription || 'We provide quality service and competitive pricing for CNC spare parts, with dependable support for maintenance, upgrades, and urgent replacements.' %></p>
+            
+            <div style="display: flex; flex-direction: column; gap: 1.25rem; margin-top: 1rem;">
+              <div class="contact-quick-card">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                <div>
+                  <strong>Phone / WhatsApp:</strong>
+                  <a href="tel:<%= settings.companyPhone %>" style="color: var(--primary); font-size: 1.05rem;"><%= settings.companyPhone %></a>
+                  <div class="small">Monday to Friday 09:00 AM to 05:30PM</div>
+                </div>
+              </div>
+
+              <div class="contact-quick-card">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                <div>
+                  <strong>Official Email:</strong>
+                  <a href="mailto:<%= settings.companyEmail %>" style="color: var(--primary); font-size: 1.05rem;"><%= settings.companyEmail %></a>
+                  <div class="small">Fast email response within hours</div>
+                </div>
+              </div>
+
+              <div class="contact-quick-card">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <div>
+                  <strong>Works &amp; Office:</strong>
+                  <p style="margin: 0; color: var(--primary);"><%= settings.companyAddress %></p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Spare Requirement Form -->
+          <div class="card form-card reveal" style="margin: 0; max-width: 100%; width: 100%; padding: 2rem;">
+            <div class="form-header" style="text-align: left; margin-bottom: 1.5rem;">
+              <span class="section-eyebrow">Quick Requirement</span>
+              <h2>Share your spare requirement</h2>
+              <p>Fill out the details below and our team will get back to you with compatibility &amp; availability.</p>
+            </div>
+
             <form action="/contact" method="post">
-              <label>Name</label>
-              <input name="customerName" required placeholder="Your name" />
-              <label>Description</label>
-              <textarea name="description" required placeholder="Describe the spare part or requirement"></textarea>
-              <label>Mobile Number</label>
-              <input name="mobileNumber" required placeholder="Mobile number" />
-              <label>Email ID</label>
-              <input name="emailId" type="email" required placeholder="Email address" />
-              <p class="small">Images are currently not sent with the form to avoid large payload failures on hosting. You can still describe the requirement in detail.</p>
+              <div class="form-group">
+                <label for="customerName">Your Full Name *</label>
+                <input id="customerName" name="customerName" required placeholder="e.g. Rajesh Kumar" autocomplete="name" />
+              </div>
+
+              <div class="form-group">
+                <label for="mobileNumber">Mobile Number *</label>
+                <input id="mobileNumber" name="mobileNumber" type="tel" required placeholder="e.g. +91 98765 43210" inputmode="tel" autocomplete="tel" />
+              </div>
+
+              <div class="form-group">
+                <label for="emailId">Email Address *</label>
+                <input id="emailId" name="emailId" type="email" required placeholder="e.g. rajesh@company.com" autocomplete="email" />
+              </div>
+
+              <div class="form-group">
+                <label for="description">Part Description &amp; Specifications *</label>
+                <textarea id="description" name="description" required placeholder="Specify CNC machine model, part number, maker (e.g. Fanuc, Siemens, Mitsubishi), quantity, and urgency..."></textarea>
+                <div class="input-help">Provide as many details as possible for precise compatibility matching.</div>
+              </div>
+
               <div class="form-actions">
-                <button class="btn btn-primary" type="submit">Submit Request</button>
+                <button class="btn btn-primary" type="submit" style="min-width: 200px;">
+                  <span>Submit Request</span>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                </button>
               </div>
             </form>
           </div>
@@ -54,33 +171,68 @@
       </div>
     </section>
 
+    <!-- Footer -->
     <footer class="footer">
       <div class="container footer-inner">
-        <div>
+        <div class="footer-brand">
           <h3><%= settings.companyName %></h3>
-          <p>Committed to quality service and competitive pricing for CNC spare parts and support.</p>
+          <p>Delivering dependable CNC spare parts sales and engineering support for workshops and manufacturing units nationwide.</p>
         </div>
-       
-        <div>
-          <p><strong>Contact</strong></p>
-          <p><%= settings.companyPhone %></p>
-          <p><%= settings.companyEmail %></p>
+        
+        <div class="footer-col">
+          <h4>Navigation</h4>
+          <ul class="footer-links-list">
+            <li><a href="/">Home</a></li>
+            <li><a href="/products">All Products</a></li>
+            <li><a href="/#about">About Us</a></li>
+            <li><a href="/contact">Contact &amp; Enquiry</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Contact Desk</h4>
+          <div class="footer-contact-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+            <div>
+              <a href="tel:<%= settings.companyPhone %>"><%= settings.companyPhone %></a>
+              <div class="small" style="color: #94a3b8; font-size: 0.82rem;">Monday to Friday 09:00 AM to 05:30PM</div>
+            </div>
+          </div>
+          <div class="footer-contact-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            <a href="mailto:<%= settings.companyEmail %>"><%= settings.companyEmail %></a>
+          </div>
+          <div class="footer-contact-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <span><%= settings.companyAddress %></span>
+          </div>
         </div>
       </div>
-      <div class="container footer-copyright">
-        <p>© <%= new Date().getFullYear() %> <%= settings.companyName %>. All rights reserved.</p>
-      </div>
-      <center>
-         <div class="footer-center">
-          <a class="footer-link" href="https://www.netcraftstudios.org" target="_blank" rel="noopener noreferrer">Developed by Netcraft Studio</a>
+
+      <div class="container footer-bottom-divider">
+        <div class="footer-copyright">
+          © <%= new Date().getFullYear() %> <%= settings.companyName %>. All rights reserved.
         </div>
-        </center>
+        <div class="footer-developer-credit">
+          <a href="https://www.netcraftstudios.org" target="_blank" rel="noopener noreferrer">Developed by Netcraft Studio</a>
+        </div>
+      </div>
     </footer>
-    <script>
-      window.scrollTo(0, 0);
-      window.addEventListener('load', function () {
-        window.scrollTo(0, 0);
-      });
-    </script>
+
+    <!-- Mobile Quick Action Sticky Bar -->
+    <div class="mobile-bottom-bar">
+      <div class="mobile-bottom-bar-inner">
+        <a href="tel:<%= settings.companyPhone %>" class="mobile-action-btn mobile-call-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+          <span>Call Support</span>
+        </a>
+        <a href="/contact" class="mobile-action-btn mobile-enquiry-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+          <span>Send Enquiry</span>
+        </a>
+      </div>
+    </div>
+
+    <script src="/app.js"></script>
   </body>
 </html>

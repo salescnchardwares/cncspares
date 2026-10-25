@@ -1,3 +1,5 @@
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first');
 const express = require('express');
 const session = require('express-session');
 const fs = require('fs');
@@ -284,10 +286,33 @@ function getTransporter(settings) {
     return null;
   }
 
+  const isGmail = smtpHost.includes('gmail.com');
+
+  if (isGmail) {
+    return nodemailer.createTransport({
+      service: 'gmail',
+      pool: true,
+      maxConnections: 3,
+      maxMessages: 50,
+      family: 4,
+      connectionTimeout: 10000,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass
+      }
+    });
+  }
+
+  const port = Number(process.env.SMTP_PORT || 587);
+  const secure = process.env.SMTP_SECURE === 'true' || port === 465;
+
   return nodemailer.createTransport({
     host: smtpHost,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: process.env.SMTP_SECURE === 'true',
+    port,
+    secure,
+    pool: true,
+    family: 4,
+    connectionTimeout: 10000,
     auth: {
       user: smtpUser,
       pass: smtpPass
@@ -296,19 +321,35 @@ function getTransporter(settings) {
 }
 
 async function sendMail(settings, to, subject, html, attachments = []) {
-  const transporter = getTransporter(settings);
-  if (!transporter) {
-    console.log(`[mail skipped] to=${to} subject=${subject}`);
+  if (!to || !to.trim()) {
+    console.log(`[mail skipped: no recipient] subject=${subject}`);
     return { skipped: true };
   }
 
-  return transporter.sendMail({
-    from: settings.mailFrom || process.env.MAIL_FROM || settings.adminEmail || 'info@cncspareshub.com',
-    to,
-    subject,
-    html,
-    ...(attachments.length ? { attachments } : {})
-  });
+  try {
+    const transporter = getTransporter(settings);
+    if (!transporter) {
+      console.log(`[mail skipped: no transporter] to=${to} subject=${subject}`);
+      return { skipped: true };
+    }
+
+    const fromName = settings.companyName || 'CNC Hardwares';
+    const fromEmail = settings.mailFrom || settings.smtpUser || settings.adminEmail || 'sales.cnchardwares@gmail.com';
+
+    console.log(`[sending mail] to=${to} subject="${subject}"`);
+    const info = await transporter.sendMail({
+      from: `"${fromName}" <${fromEmail}>`,
+      to: to.trim(),
+      subject,
+      html,
+      ...(attachments.length ? { attachments } : {})
+    });
+    console.log(`[mail sent SUCCESS] to=${to} id=${info.messageId}`);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error(`[mail error] to=${to} subject="${subject}":`, error.message);
+    return { error: error.message };
+  }
 }
 
 async function buildEmailAttachment(imageUrl, fileName) {
@@ -406,34 +447,28 @@ app.post('/contact', async (req, res) => {
 
   request.enquiryFingerprint = contactFingerprint;
   inquiries.unshift(request);
-  persistJson(INQUIRIES_FILE, inquiries);
+  await persistJson(INQUIRIES_FILE, inquiries);
 
-  const imageHtml = attachments.length
-    ? `<p><strong>Uploaded image:</strong></p><img src="cid:contact-image" alt="Uploaded contact image" style="max-width: 100%; max-height: 240px; border-radius: 10px;" />`
-    : '';
-
-  const html = `
+  const adminEmail = settings.adminEmail || 'sales.cnchardwares@gmail.com';
+  const adminHtml = `
     <h3>New Contact Enquiry Received</h3>
     <p><strong>Name:</strong> ${request.customerName}</p>
     <p><strong>Mobile:</strong> ${request.mobileNumber}</p>
     <p><strong>Email:</strong> ${request.emailId}</p>
     <p><strong>Description:</strong> ${request.description}</p>
-    ${imageHtml}
   `;
 
   const customerHtml = `
-    <h3>Thank you for contacting ${settings.companyName || 'us'}</h3>
-    <p>We have received your request and will get back to you shortly.</p>
-    <p><strong>Your message:</strong> ${request.description}</p>
-    ${imageHtml}
+    <h3>Thank you for contacting ${settings.companyName || 'CNC Hardwares'}</h3>
+    <p>We have received your requirement: <em>"${request.description}"</em></p>
+    <p>Our team will get back to you shortly. Helpline: ${settings.companyPhone}</p>
   `;
 
-  const customerEmail = request.emailId || settings.companyEmail || 'sales.cnchardwares@gmail.com';
+  await sendMail(settings, adminEmail, 'New Contact Message Received', adminHtml, attachments);
+  if (request.emailId && request.emailId.trim()) {
+    await sendMail(settings, request.emailId, 'We have received your enquiry', customerHtml, attachments);
+  }
 
-  await Promise.allSettled([
-    sendMail(settings, settings.adminEmail || 'sales.cnchardwares@gmail.com', 'New Contact Enquiry Received', html, attachments),
-    sendMail(settings, customerEmail, 'We received your enquiry', customerHtml, attachments)
-  ]);
   res.redirect('/contact?submitted=1');
 });
 
@@ -484,57 +519,133 @@ app.post('/enquire/:id', async (req, res) => {
 
   enquiry.enquiryFingerprint = enquiryFingerprint;
   inquiries.unshift(enquiry);
-  persistJson(INQUIRIES_FILE, inquiries);
+  await persistJson(INQUIRIES_FILE, inquiries);
 
   const adminEmail = settings.adminEmail || process.env.ADMIN_EMAIL || 'sales.cnchardwares@gmail.com';
+
   const adminHtml = `
-    <h3>New Contact Enquiry Received</h3>
-    <p><strong>Customer:</strong> ${enquiry.customerName}</p>
-    <p><strong>Mobile:</strong> ${enquiry.mobileNumber}</p>
-    <p><strong>Email:</strong> ${enquiry.emailId}</p>
-    <p><strong>Company:</strong> ${enquiry.companyName}</p>
-    <p><strong>GSTIN:</strong> ${enquiry.gstinNumber}</p>
-    <p><strong>Quantity:</strong> ${enquiry.quantity}</p>
-    <p><strong>Spare:</strong> ${enquiry.spareTitle}</p>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #ffffff;">
+      <div style="background: #0c2340; color: #ffffff; padding: 20px 24px;">
+        <h2 style="margin: 0; font-size: 18px; color: #f97316;">🔔 New Customer Order / Enquiry</h2>
+        <p style="margin: 4px 0 0; font-size: 13px; color: #cbd5e1;">Received on website catalog</p>
+      </div>
+      <div style="padding: 24px;">
+        <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 8px 0; color: #64748b;"><strong>Order ID:</strong></td>
+            <td style="padding: 8px 0; font-weight: bold; color: #0f172a;">${enquiry.id}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 8px 0; color: #64748b;"><strong>Product / Spare:</strong></td>
+            <td style="padding: 8px 0; font-weight: bold; color: #0f172a;">${enquiry.spareTitle}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 8px 0; color: #64748b;"><strong>Quantity:</strong></td>
+            <td style="padding: 8px 0; color: #0f172a; font-weight: bold;">${enquiry.quantity}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 8px 0; color: #64748b;"><strong>Customer Name:</strong></td>
+            <td style="padding: 8px 0; color: #0f172a;">${enquiry.customerName}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 8px 0; color: #64748b;"><strong>Mobile Number:</strong></td>
+            <td style="padding: 8px 0;"><a href="tel:${enquiry.mobileNumber}" style="color: #2563eb; font-weight: bold;">${enquiry.mobileNumber}</a></td>
+          </tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 8px 0; color: #64748b;"><strong>Customer Email:</strong></td>
+            <td style="padding: 8px 0;"><a href="mailto:${enquiry.emailId}" style="color: #2563eb;">${enquiry.emailId}</a></td>
+          </tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 8px 0; color: #64748b;"><strong>Company:</strong></td>
+            <td style="padding: 8px 0; color: #0f172a;">${enquiry.companyName || 'Not provided'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #64748b;"><strong>GSTIN:</strong></td>
+            <td style="padding: 8px 0; color: #0f172a;">${enquiry.gstinNumber || 'Not provided'}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
   `;
 
   const customerHtml = `
-    <h3>We have received your enquiry</h3>
-    <p>Thank you, ${enquiry.customerName}. We have received your requirement for <strong>${enquiry.spareTitle}</strong>.</p>
-    <p>Our team will review your request and update you shortly.</p>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #ffffff;">
+      <div style="background: #0c2340; color: #ffffff; padding: 24px; text-align: center;">
+        <h2 style="margin: 0; font-size: 20px;">${settings.companyName || 'CNC Hardwares'}</h2>
+        <p style="margin: 6px 0 0; font-size: 14px; color: #cbd5e1;">Order &amp; Enquiry Confirmation</p>
+      </div>
+      <div style="padding: 24px;">
+        <p style="font-size: 16px; color: #0f172a; margin-top: 0;">Dear <strong>${enquiry.customerName}</strong>,</p>
+        <p style="font-size: 14px; color: #334155; line-height: 1.5;">
+          Thank you for reaching out. We have received your requirement for <strong>${enquiry.spareTitle}</strong>. Our engineering team will verify part compatibility, check current inventory, and update you with quotation details shortly.
+        </p>
+
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+          <h3 style="margin: 0 0 12px; font-size: 15px; color: #0c2340;">Order Summary</h3>
+          <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;"><strong>Order Reference:</strong></td>
+              <td style="padding: 6px 0; text-align: right; font-weight: bold; color: #0f172a;">${enquiry.id}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;"><strong>Product / Spare:</strong></td>
+              <td style="padding: 6px 0; text-align: right; color: #0f172a;">${enquiry.spareTitle}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;"><strong>Quantity:</strong></td>
+              <td style="padding: 6px 0; text-align: right; color: #0f172a; font-weight: bold;">${enquiry.quantity}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;"><strong>Status:</strong></td>
+              <td style="padding: 6px 0; text-align: right;"><span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 99px; font-weight: bold; font-size: 12px;">${enquiry.status}</span></td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="background: #f0f7ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 14px; font-size: 13px; color: #0369a1;">
+          <p style="margin: 0 0 4px;"><strong>Need immediate assistance?</strong></p>
+          <p style="margin: 0;">Phone: <a href="tel:${settings.companyPhone}" style="color: #0284c7; font-weight: bold;">${settings.companyPhone}</a> | Email: <a href="mailto:${settings.companyEmail}" style="color: #0284c7;">${settings.companyEmail}</a></p>
+          <p style="margin: 4px 0 0;">Working Hours: Monday to Friday 09:00 AM to 05:30PM</p>
+        </div>
+      </div>
+      <div style="background: #f1f5f9; padding: 14px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+        &copy; ${new Date().getFullYear()} ${settings.companyName || 'CNC Hardwares'}. All rights reserved.
+      </div>
+    </div>
   `;
 
-  await Promise.allSettled([
-    sendMail(settings, adminEmail, `New enquiry for ${enquiry.spareTitle}`, adminHtml),
-    sendMail(settings, enquiry.emailId, `Enquiry received for ${enquiry.spareTitle}`, customerHtml)
-  ]);
+  // Send admin notification and customer confirmation
+  await sendMail(settings, adminEmail, `New Order Enquiry: ${enquiry.spareTitle} (Ref: ${enquiry.id})`, adminHtml);
+  if (enquiry.emailId && enquiry.emailId.trim()) {
+    await sendMail(settings, enquiry.emailId, `Order Confirmation: ${enquiry.spareTitle} - ${settings.companyName || 'CNC Hardwares'}`, customerHtml);
+  }
 
   res.redirect('/?submitted=1');
 });
 
-app.get('/admin/login', (req, res) => {
-  res.render('admin-login', { error: '' });
+app.get(['/Updates/login', '/updates/login', '/admin/login'], (req, res) => {
+  res.render('admin-login', { error: '', adminBase: '/Updates' });
 });
 
-app.post('/admin/login', async (req, res) => {
+app.post(['/Updates/login', '/updates/login', '/admin/login'], async (req, res) => {
   const password = req.body.password;
   const { settings } = await loadData();
   const expectedPassword = getAdminPassword(settings);
   if (password === expectedPassword) {
     req.session.adminAuthenticated = true;
-    return res.redirect('/admin');
+    return res.redirect('/Updates');
   }
-  res.render('admin-login', { error: 'Incorrect password. Please try again.' });
+  res.render('admin-login', { error: 'Incorrect password. Please try again.', adminBase: '/Updates' });
 });
 
-app.get('/admin/logout', (req, res) => {
+app.get(['/Updates/logout', '/updates/logout', '/admin/logout'], (req, res) => {
   req.session.destroy(() => {
-    res.redirect('/admin/login');
+    res.redirect('/Updates/login');
   });
 });
 
-app.get('/admin', async (req, res) => {
-  if (!isAdmin(req)) return res.redirect('/admin/login');
+app.get(['/Updates', '/updates', '/admin'], async (req, res) => {
+  if (!isAdmin(req)) return res.redirect('/Updates/login');
   const { spares, inquiries, settings } = await loadData();
   res.render('admin', {
     spares,
@@ -542,31 +653,32 @@ app.get('/admin', async (req, res) => {
     settings,
     editingSpare: null,
     analyticsEnabled: Boolean(settings.analyticsEnabled),
-    analyticsVisits: Number(settings.analyticsVisits || 0)
+    analyticsVisits: Number(settings.analyticsVisits || 0),
+    adminBase: '/Updates'
   });
 });
 
-app.get('/admin/company', async (req, res) => {
-  if (!isAdmin(req)) return res.redirect('/admin/login');
+app.get(['/Updates/company', '/updates/company', '/admin/company'], async (req, res) => {
+  if (!isAdmin(req)) return res.redirect('/Updates/login');
   const { settings } = await loadData();
-  res.render('admin-company', { settings });
+  res.render('admin-company', { settings, adminBase: '/Updates' });
 });
 
-app.get('/admin/spares', async (req, res) => {
-  if (!isAdmin(req)) return res.redirect('/admin/login');
+app.get(['/Updates/spares', '/updates/spares', '/admin/spares'], async (req, res) => {
+  if (!isAdmin(req)) return res.redirect('/Updates/login');
   const { spares, inquiries, settings } = await loadData();
-  res.render('admin-spares', { spares, inquiries, settings, editingSpare: null });
+  res.render('admin-spares', { spares, inquiries, settings, editingSpare: null, adminBase: '/Updates' });
 });
 
-app.get('/admin/spares/:id/edit', async (req, res) => {
-  if (!isAdmin(req)) return res.redirect('/admin/login');
+app.get(['/Updates/spares/:id/edit', '/updates/spares/:id/edit', '/admin/spares/:id/edit'], async (req, res) => {
+  if (!isAdmin(req)) return res.redirect('/Updates/login');
   const { spares, inquiries, settings } = await loadData();
   const editingSpare = spares.find((item) => item.id === req.params.id) || null;
-  res.render('admin-spares', { spares, inquiries, settings, editingSpare });
+  res.render('admin-spares', { spares, inquiries, settings, editingSpare, adminBase: '/Updates' });
 });
 
-app.post('/admin/spares', upload.single('imageFile'), async (req, res) => {
-  if (!isAdmin(req)) return res.redirect('/admin/login');
+app.post(['/Updates/spares', '/updates/spares', '/admin/spares'], upload.single('imageFile'), async (req, res) => {
+  if (!isAdmin(req)) return res.redirect('/Updates/login');
   const { spares, settings } = await loadData();
   const spareId = req.body.id || `spare-${Date.now()}`;
   const updatedSpares = spares.filter((item) => item.id !== spareId);
@@ -590,19 +702,19 @@ app.post('/admin/spares', upload.single('imageFile'), async (req, res) => {
     imageAlt: req.body.imageAlt || req.body.title
   });
   persistJson(SPARES_FILE, updatedSpares);
-  res.redirect('/admin/spares');
+  res.redirect('/Updates/spares');
 });
 
-app.post('/admin/spares/delete', async (req, res) => {
-  if (!isAdmin(req)) return res.redirect('/admin/login');
+app.post(['/Updates/spares/delete', '/updates/spares/delete', '/admin/spares/delete'], async (req, res) => {
+  if (!isAdmin(req)) return res.redirect('/Updates/login');
   const { spares } = await loadData();
   const filtered = spares.filter((item) => item.id !== req.body.id);
   await persistJson(SPARES_FILE, filtered);
-  res.redirect('/admin/spares');
+  res.redirect('/Updates/spares');
 });
 
-app.post('/admin/settings', upload.single('logoFile'), async (req, res) => {
-  if (!isAdmin(req)) return res.redirect('/admin/login');
+app.post(['/Updates/settings', '/updates/settings', '/admin/settings'], upload.single('logoFile'), async (req, res) => {
+  if (!isAdmin(req)) return res.redirect('/Updates/login');
   const { settings: current } = await loadData();
   let logoUrl = req.body.companyLogoUrl || current.companyLogoUrl || '';
   let logoPublicId = current.companyLogoPublicId || '';
@@ -640,89 +752,149 @@ app.post('/admin/settings', upload.single('logoFile'), async (req, res) => {
     companyLogoPublicId: logoPublicId
   };
   persistJson(SETTINGS_FILE, settings);
-  res.redirect('/admin/company');
+  res.redirect('/Updates/company');
 });
 
-app.post('/admin/analytics-toggle', async (req, res) => {
-  if (!isAdmin(req)) return res.redirect('/admin/login');
+app.post(['/Updates/analytics-toggle', '/updates/analytics-toggle', '/admin/analytics-toggle'], async (req, res) => {
+  if (!isAdmin(req)) return res.redirect('/Updates/login');
   const { settings } = await loadData();
   const updatedSettings = {
     ...settings,
     analyticsEnabled: req.body.analyticsEnabled === 'on'
   };
   await persistJson(SETTINGS_FILE, updatedSettings);
-  res.redirect('/admin');
+  res.redirect('/Updates');
 });
 
-app.get('/admin/orders', async (req, res) => {
-  if (!isAdmin(req)) return res.redirect('/admin/login');
+app.get(['/Updates/orders', '/updates/orders', '/admin/orders'], async (req, res) => {
+  if (!isAdmin(req)) return res.redirect('/Updates/login');
   const { inquiries, settings } = await loadData();
-  res.render('admin-orders', { inquiries, settings });
+  res.render('admin-orders', { inquiries, settings, adminBase: '/Updates', updated: req.query.updated === '1' });
 });
 
-app.post('/admin/orders/:id/status', async (req, res) => {
-  if (!isAdmin(req)) return res.redirect('/admin/login');
+app.post(['/Updates/orders/:id/status', '/updates/orders/:id/status', '/admin/orders/:id/status'], async (req, res) => {
+  if (!isAdmin(req)) return res.redirect('/Updates/login');
   const { inquiries, settings } = await loadData();
   const enquiry = inquiries.find((item) => item.id === req.params.id);
   if (!enquiry) {
-    return res.redirect('/admin/orders');
+    return res.redirect('/Updates/orders');
   }
 
   enquiry.status = req.body.status;
   enquiry.updatedAt = new Date().toISOString();
-  persistJson(INQUIRIES_FILE, inquiries);
+  await persistJson(INQUIRIES_FILE, inquiries);
 
-  const subject = `Order status updated: ${req.body.status}`;
-  const html = `
-    <h3>Your inquiry update</h3>
-    <p>Hello ${enquiry.customerName},</p>
-    <p>Your request for <strong>${enquiry.spareTitle}</strong> is now marked as <strong>${req.body.status}</strong>.</p>
-    <p>Thank you for choosing us.</p>
-  `;
+  if (enquiry.emailId && enquiry.emailId.trim()) {
+    const statusColor = 
+      enquiry.status === 'Completed' ? '#10b981' :
+      enquiry.status === 'Confirmed' ? '#2563eb' :
+      enquiry.status === 'Packed' ? '#7c3aed' : '#f59e0b';
 
-  await sendMail(settings, enquiry.emailId, subject, html);
-  res.redirect('/admin/orders');
+    const subject = `Order Status Update: [${enquiry.status}] - ${enquiry.spareTitle || 'CNC Spares Requirement'}`;
+    const html = `
+      <div style="font-family: 'Segoe UI', Tahoma, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; background: #ffffff;">
+        <div style="background: linear-gradient(135deg, #0c2340 0%, #1e3e62 100%); color: #ffffff; padding: 28px 24px; text-align: center;">
+          <h2 style="margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">${settings.companyName || 'CNC Hardwares'}</h2>
+          <p style="margin: 6px 0 0; font-size: 14px; color: #cbd5e1;">Customer Enquiry &amp; Order Status Update</p>
+        </div>
+
+        <div style="padding: 28px 24px;">
+          <p style="font-size: 16px; color: #0f172a; margin-top: 0;">Hello <strong>${enquiry.customerName || 'Customer'}</strong>,</p>
+          <p style="font-size: 15px; color: #475569; line-height: 1.6;">
+            We are writing to inform you that your spare part enquiry / order status has been updated:
+          </p>
+
+          <div style="text-align: center; margin: 24px 0;">
+            <span style="display: inline-block; background: ${statusColor}; color: #ffffff; font-weight: 800; font-size: 16px; padding: 10px 28px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 4px 12px rgba(0,0,0,0.12);">
+              ${enquiry.status}
+            </span>
+          </div>
+
+          <table style="width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px;">
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+              <td style="padding: 10px 0; color: #64748b; font-weight: bold;">Order Reference:</td>
+              <td style="padding: 10px 0; color: #0f172a; text-align: right; font-weight: bold;">${enquiry.id}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+              <td style="padding: 10px 0; color: #64748b; font-weight: bold;">Spare / Item:</td>
+              <td style="padding: 10px 0; color: #0f172a; text-align: right; font-weight: 600;">${enquiry.spareTitle || 'Custom Requirement'}</td>
+            </tr>
+            ${enquiry.quantity ? `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+              <td style="padding: 10px 0; color: #64748b; font-weight: bold;">Quantity:</td>
+              <td style="padding: 10px 0; color: #0f172a; text-align: right; font-weight: 600;">${enquiry.quantity}</td>
+            </tr>` : ''}
+            ${enquiry.companyName && enquiry.companyName !== 'Not provided' ? `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+              <td style="padding: 10px 0; color: #64748b; font-weight: bold;">Company:</td>
+              <td style="padding: 10px 0; color: #0f172a; text-align: right;">${enquiry.companyName}</td>
+            </tr>` : ''}
+            <tr>
+              <td style="padding: 10px 0; color: #64748b; font-weight: bold;">Last Updated:</td>
+              <td style="padding: 10px 0; color: #0f172a; text-align: right;">${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })}</td>
+            </tr>
+          </table>
+
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; margin-top: 24px; font-size: 13px; color: #475569;">
+            <p style="margin: 0 0 6px; font-weight: bold; color: #0f172a;">Direct Contact &amp; Dispatch Support:</p>
+            <p style="margin: 0;">Phone / WhatsApp: <a href="tel:${settings.companyPhone}" style="color: #2563eb; font-weight: bold; text-decoration: none;">${settings.companyPhone}</a></p>
+            <p style="margin: 4px 0 0;">Email: <a href="mailto:${settings.companyEmail}" style="color: #2563eb; text-decoration: none;">${settings.companyEmail}</a></p>
+            <p style="margin: 4px 0 0;">Operating Hours: Monday to Friday 09:00 AM to 05:30PM</p>
+          </div>
+        </div>
+
+        <div style="background: #f1f5f9; padding: 16px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+          &copy; ${new Date().getFullYear()} ${settings.companyName || 'CNC Hardwares'}. All rights reserved.
+        </div>
+      </div>
+    `;
+
+    console.log(`[sending status email] to=${enquiry.emailId} status=${enquiry.status}`);
+    await sendMail(settings, enquiry.emailId, subject, html);
+  }
+
+  res.redirect('/Updates/orders?updated=1');
 });
 
-app.post('/admin/orders/delete', async (req, res) => {
-  if (!isAdmin(req)) return res.redirect('/admin/login');
+app.post(['/Updates/orders/delete', '/updates/orders/delete', '/admin/orders/delete'], async (req, res) => {
+  if (!isAdmin(req)) return res.redirect('/Updates/login');
   const { inquiries } = await loadData();
   const filtered = inquiries.filter((item) => item.id !== req.body.id);
   persistJson(INQUIRIES_FILE, filtered);
-  res.redirect('/admin/orders');
+  res.redirect('/Updates/orders');
 });
 
-app.get('/admin/password', async (req, res) => {
-  if (!isAdmin(req)) return res.redirect('/admin/login');
+app.get(['/Updates/password', '/updates/password', '/admin/password'], async (req, res) => {
+  if (!isAdmin(req)) return res.redirect('/Updates/login');
   const { settings } = await loadData();
-  res.render('admin-password', { settings, message: '', error: '' });
+  res.render('admin-password', { settings, message: '', error: '', adminBase: '/Updates' });
 });
 
-app.post('/admin/password', async (req, res) => {
-  if (!isAdmin(req)) return res.redirect('/admin/login');
+app.post(['/Updates/password', '/updates/password', '/admin/password'], async (req, res) => {
+  if (!isAdmin(req)) return res.redirect('/Updates/login');
   const { settings } = await loadData();
   const currentPassword = req.body.currentPassword || '';
   const newPassword = req.body.newPassword || '';
   const confirmPassword = req.body.confirmPassword || '';
   const expectedPassword = getAdminPassword(settings);
   if (currentPassword !== expectedPassword) {
-    return res.render('admin-password', { settings, message: '', error: 'Current password is incorrect.' });
+    return res.render('admin-password', { settings, message: '', error: 'Current password is incorrect.', adminBase: '/Updates' });
   }
   if (!newPassword || newPassword.length < 4) {
-    return res.render('admin-password', { settings, message: '', error: 'New password must be at least 4 characters.' });
+    return res.render('admin-password', { settings, message: '', error: 'New password must be at least 4 characters.', adminBase: '/Updates' });
   }
   if (newPassword !== confirmPassword) {
-    return res.render('admin-password', { settings, message: '', error: 'New password and confirmation do not match.' });
+    return res.render('admin-password', { settings, message: '', error: 'New password and confirmation do not match.', adminBase: '/Updates' });
   }
 
   const updatedSettings = { ...settings, adminPassword: newPassword };
   persistJson(SETTINGS_FILE, updatedSettings);
-  return res.render('admin-password', { settings: updatedSettings, message: 'Admin password updated successfully.', error: '' });
+  return res.render('admin-password', { settings: updatedSettings, message: 'Admin password updated successfully.', error: '', adminBase: '/Updates' });
 });
 
-app.get('/admin/export-orders', (req, res) => {
-  if (!isAdmin(req)) return res.redirect('/admin/login');
-  const { inquiries } = loadData();
+app.get(['/Updates/export-orders', '/updates/export-orders', '/admin/export-orders'], async (req, res) => {
+  if (!isAdmin(req)) return res.redirect('/Updates/login');
+  const { inquiries } = await loadData();
   const rows = [
     ['Order ID', 'Customer Name', 'Mobile Number', 'Email', 'Company', 'GSTIN', 'Quantity', 'Spare', 'Status', 'Created At', 'Updated At']
   ];
@@ -772,3 +944,12 @@ if (process.env.NODE_ENV !== 'production' || process.env.VERCEL !== '1') {
 }
 
 module.exports = app;
+
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[Unhandled Rejection]', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('[Uncaught Exception]', err);
+});

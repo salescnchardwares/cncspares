@@ -3,89 +3,176 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Company Details | Admin</title>
+    <title>Company Details | Admin Portal</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="stylesheet" href="/site.css" />
+    <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body>
-    <div class="container" style="padding: 2rem 0 3rem;">
-      <div class="navbar" style="margin-bottom: 1rem;">
-        <div class="brand">Admin Dashboard</div>
-        <div class="nav-links">
-          <a class="btn btn-secondary admin-nav-btn" href="/admin/company">Company</a>
-          <a class="btn btn-secondary admin-nav-btn" href="/admin/spares">Spares</a>
-          <a class="btn btn-secondary admin-nav-btn" href="/admin/orders">Orders</a>
-          <a class="btn btn-secondary admin-nav-btn" href="/admin/password">Password</a>
-          <a class="btn btn-secondary admin-nav-btn" href="/admin/logout">Logout</a>
+  <body style="background: var(--bg);">
+    <div class="container" style="padding: 2rem 0 4rem;">
+      <!-- Admin Header Bar -->
+      <div class="admin-header-bar">
+        <div class="admin-brand">
+          <div class="brand-logo-wrap" style="width: 38px; height: 38px;">
+            <img src="<%= settings.companyLogoUrl || '/logo.svg' %>" alt="<%= settings.companyName %> logo" class="brand-logo-img" />
+          </div>
+          <span><%= settings.companyName %> Admin</span>
         </div>
+
+        <nav class="admin-nav-links">
+          <a class="btn admin-nav-btn" href="/Updates">Dashboard</a>
+          <a class="btn admin-nav-btn active" href="/Updates/company">Company Details</a>
+          <a class="btn admin-nav-btn" href="/Updates/spares">Manage Spares</a>
+          <a class="btn admin-nav-btn" href="/Updates/orders">Enquiries &amp; Orders</a>
+          <a class="btn admin-nav-btn" href="/Updates/password">Security</a>
+          <a class="btn admin-nav-btn logout" href="/Updates/logout">Logout</a>
+        </nav>
       </div>
 
-      <div class="card admin-card">
-        <h3>Company Details</h3>
-        <form method="post" action="/admin/settings" enctype="multipart/form-data">
-          <div class="admin-grid">
-            <div>
-              <label>Company Name</label>
-              <input name="companyName" value="<%= settings.companyName %>" />
-              <label>Tagline</label>
-              <input name="companyTagline" value="<%= settings.companyTagline %>" />
-              <label>Address</label>
-              <input name="companyAddress" value="<%= settings.companyAddress %>" />
-              <label>Phone</label>
-              <input name="companyPhone" value="<%= settings.companyPhone %>" />
-            </div>
-            <div>
-              <label>Email</label>
-              <input name="companyEmail" value="<%= settings.companyEmail %>" />
-              <label>Admin Email</label>
-              <input name="adminEmail" value="<%= settings.adminEmail %>" />
-              <label>Description</label>
-              <textarea name="companyDescription"><%= settings.companyDescription %></textarea>
+      <div class="card admin-card reveal">
+        <div class="admin-section-header">
+          <div>
+            <h3>Company Configuration</h3>
+            <p class="muted" style="margin: 0; font-size: 0.9rem;">Manage business information, SMTP email notification credentials, and branding assets.</p>
+          </div>
+        </div>
+
+        <form method="post" action="/Updates/settings" enctype="multipart/form-data">
+          <!-- Section 1: Business Details -->
+          <div style="margin-bottom: 2rem;">
+            <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+              1. General Business Profile
+            </h4>
+            <div class="admin-grid">
+              <div>
+                <div class="form-group">
+                  <label for="companyName">Company Name *</label>
+                  <input id="companyName" name="companyName" value="<%= settings.companyName %>" required />
+                </div>
+                <div class="form-group">
+                  <label for="companyTagline">Company Tagline</label>
+                  <input id="companyTagline" name="companyTagline" value="<%= settings.companyTagline %>" />
+                </div>
+                <div class="form-group">
+                  <label for="companyAddress">Operating Address</label>
+                  <input id="companyAddress" name="companyAddress" value="<%= settings.companyAddress %>" />
+                </div>
+                <div class="form-group">
+                  <label for="companyPhone">Phone / Mobile Helpline</label>
+                  <input id="companyPhone" name="companyPhone" value="<%= settings.companyPhone %>" />
+                </div>
+              </div>
+              <div>
+                <div class="form-group">
+                  <label for="companyEmail">Public Customer Email</label>
+                  <input id="companyEmail" name="companyEmail" value="<%= settings.companyEmail %>" />
+                </div>
+                <div class="form-group">
+                  <label for="adminEmail">Admin Notification Recipient Email</label>
+                  <input id="adminEmail" name="adminEmail" value="<%= settings.adminEmail %>" />
+                </div>
+                <div class="form-group">
+                  <label for="companyDescription">About Company Description</label>
+                  <textarea id="companyDescription" name="companyDescription" style="min-height: 120px;"><%= settings.companyDescription %></textarea>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="admin-grid" style="margin-top: 1rem;">
-            <div>
-              <label>SMTP Host</label>
-              <input name="smtpHost" value="<%= settings.smtpHost || '' %>" placeholder="smtp.example.com" />
-              <label>SMTP User</label>
-              <input name="smtpUser" value="<%= settings.smtpUser || '' %>" placeholder="your-email@example.com" />
-            </div>
-            <div>
-              <label>SMTP Password</label>
-              <input name="smtpPass" type="password" value="<%= settings.smtpPass || '' %>" placeholder="Your SMTP password" />
-              <label>Mail From</label>
-              <input name="mailFrom" value="<%= settings.mailFrom || '' %>" placeholder="noreply@example.com" />
-            </div>
-          </div>
-          <div class="admin-grid" style="margin-top: 1rem;">
-            <div>
-              <label>Cloudinary Cloud Name</label>
-              <input name="cloudinaryCloudName" value="<%= settings.cloudinaryCloudName || '' %>" placeholder="your-cloud-name" />
-              <label>Cloudinary Upload Preset</label>
-              <input name="cloudinaryUploadPreset" value="<%= settings.cloudinaryUploadPreset || '' %>" placeholder="your-preset" />
-            </div>
-            <div>
-              <label>Cloudinary Folder</label>
-              <input name="cloudinaryFolder" value="<%= settings.cloudinaryFolder || '' %>" placeholder="cnc-spares" />
-              <p class="small">You can paste your Cloudinary details here and use them for spare images.</p>
-            </div>
-          </div>
-          <div class="admin-grid" style="margin-top: 1rem;">
-            <div>
-              <label>Logo URL</label>
-              <input name="companyLogoUrl" value="<%= settings.companyLogoUrl || '' %>" placeholder="https://example.com/logo.png" />
-              <label>Upload Logo</label>
-              <input type="file" name="logoFile" accept="image/*" />
-            </div>
-            <div>
-              <% if (settings.companyLogoUrl) { %>
-                <label>Current Logo Preview</label>
-                <img src="<%= settings.companyLogoUrl %>" alt="Current company logo" style="max-width: 220px; max-height: 120px; object-fit: contain; border-radius: 12px; border: 1px solid #dde5ee;" />
-              <% } %>
+
+          <!-- Section 2: Logo and Branding -->
+          <div style="margin-bottom: 2rem;">
+            <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+              2. Branding &amp; Logo
+            </h4>
+            <div class="admin-grid">
+              <div>
+                <div class="form-group">
+                  <label for="companyLogoUrl">Logo URL</label>
+                  <input id="companyLogoUrl" name="companyLogoUrl" value="<%= settings.companyLogoUrl || '' %>" placeholder="https://res.cloudinary.com/..." />
+                  <div class="input-help">Direct link to hosted logo image</div>
+                </div>
+                <div class="form-group">
+                  <label for="logoFile">Upload Logo File</label>
+                  <input id="logoFile" type="file" name="logoFile" accept="image/*" />
+                  <div class="input-help">Supports PNG, JPG, WebP, SVG. Uploaded directly to Cloudinary if configured.</div>
+                </div>
+              </div>
+              <div>
+                <% if (settings.companyLogoUrl) { %>
+                  <label>Current Logo Preview</label>
+                  <div style="background: var(--surface-alt); border-radius: var(--radius-md); padding: 1.25rem; border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; min-height: 140px;">
+                    <img src="<%= settings.companyLogoUrl %>" alt="Current company logo" style="max-width: 240px; max-height: 110px; object-fit: contain;" />
+                  </div>
+                <% } else { %>
+                  <label>Current Logo</label>
+                  <div style="background: var(--surface-alt); border-radius: var(--radius-md); padding: 1.25rem; border: 1.5px dashed var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 140px; color: var(--text-muted);">
+                    <img src="/logo.svg" alt="Default logo" style="max-width: 120px; max-height: 80px; object-fit: contain; margin-bottom: 0.5rem;" />
+                    <span style="font-size: 0.85rem;">Using default logo.svg. Upload a custom logo to replace it.</span>
+                  </div>
+                <% } %>
+              </div>
             </div>
           </div>
-          <div class="form-actions">
-            <button class="btn btn-primary" type="submit">Save Company Details</button>
+
+          <!-- Section 3: SMTP Email Notifications -->
+          <div style="margin-bottom: 2rem;">
+            <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+              3. SMTP Email Configuration
+            </h4>
+            <div class="admin-grid">
+              <div>
+                <div class="form-group">
+                  <label for="smtpHost">SMTP Host</label>
+                  <input id="smtpHost" name="smtpHost" value="<%= settings.smtpHost || '' %>" placeholder="smtp.gmail.com" />
+                </div>
+                <div class="form-group">
+                  <label for="smtpUser">SMTP User / Username</label>
+                  <input id="smtpUser" name="smtpUser" value="<%= settings.smtpUser || '' %>" placeholder="sales.company@gmail.com" />
+                </div>
+              </div>
+              <div>
+                <div class="form-group">
+                  <label for="smtpPass">SMTP Password / App Password</label>
+                  <input id="smtpPass" name="smtpPass" type="password" value="<%= settings.smtpPass || '' %>" placeholder="•••• •••• •••• ••••" />
+                </div>
+                <div class="form-group">
+                  <label for="mailFrom">Mail From Address</label>
+                  <input id="mailFrom" name="mailFrom" value="<%= settings.mailFrom || '' %>" placeholder="sales.company@gmail.com" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 4: Cloudinary Storage -->
+          <div style="margin-bottom: 2rem;">
+            <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+              4. Cloudinary Cloud Storage
+            </h4>
+            <div class="admin-grid">
+              <div>
+                <div class="form-group">
+                  <label for="cloudinaryCloudName">Cloudinary Cloud Name</label>
+                  <input id="cloudinaryCloudName" name="cloudinaryCloudName" value="<%= settings.cloudinaryCloudName || '' %>" placeholder="cloud-name" />
+                </div>
+                <div class="form-group">
+                  <label for="cloudinaryUploadPreset">Cloudinary Upload Preset</label>
+                  <input id="cloudinaryUploadPreset" name="cloudinaryUploadPreset" value="<%= settings.cloudinaryUploadPreset || '' %>" placeholder="unsigned-preset" />
+                </div>
+              </div>
+              <div>
+                <div class="form-group">
+                  <label for="cloudinaryFolder">Cloudinary Folder</label>
+                  <input id="cloudinaryFolder" name="cloudinaryFolder" value="<%= settings.cloudinaryFolder || '' %>" placeholder="cnc-spares" />
+                  <div class="input-help">Folder name to store uploaded spare part images.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions" style="border-top: 1px solid var(--border); padding-top: 1.5rem;">
+            <button class="btn btn-primary" type="submit" style="min-width: 220px;">
+              <span>Save Company Details</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            </button>
           </div>
         </form>
       </div>
