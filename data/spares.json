@@ -1,17 +1,5 @@
 [
   {
-    "id": "spare-1",
-    "title": "Spindle Bearing Kit",
-    "category": "Spindle Parts",
-    "details": "High-performance bearing kit suitable for CNC spindle assemblies. Ideal for replacement during routine maintenance or after wear detection. Please enquire for compatibility and availability."
-  },
-  {
-    "id": "spare-2",
-    "title": "Servo Motor Encoder",
-    "category": "Drive Components",
-    "details": "Precision encoder for servo motors. Helps maintain accurate motion feedback for CNC positioning systems. Enquire for model compatibility and stock information."
-  },
-  {
     "id": "spare-1785316637997",
     "title": "Testing",
     "category": "Power",

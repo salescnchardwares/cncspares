@@ -14,6 +14,12 @@ const app = require('../server');
   const port = server.address().port;
 
   try {
+    const initialProductsResponse = await fetch(`http://127.0.0.1:${port}/products`);
+    const initialHtml = await initialProductsResponse.text();
+    assert.ok(!initialHtml.includes('Spindle Bearing Kit'), 'products page should not include seeded starter products');
+    assert.ok(!initialHtml.includes('Servo Motor Encoder'), 'products page should not include seeded starter products');
+    assert.ok(!initialHtml.includes('Ball Screw Assembly'), 'products page should not include seeded starter products');
+
     const loginResponse = await fetch(`http://127.0.0.1:${port}/admin/login`, {
       method: 'POST',
       redirect: 'manual',

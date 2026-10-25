@@ -15,6 +15,7 @@ const DATA_DIR = path.join(__dirname, 'data');
 const SPARES_FILE = path.join(DATA_DIR, 'spares.json');
 const INQUIRIES_FILE = path.join(DATA_DIR, 'inquiries.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+const LEGACY_STARTER_SPARE_IDS = new Set(['spare-1', 'spare-2', 'spare-3']);
 const PRODUCT_SERVICES = [
   { title: 'CNC machine spare parts', description: 'Reliable spare parts for machining and production equipment.' },
   { title: 'Encoder cables', description: 'High-quality signal and communication cable solutions.' },
@@ -22,7 +23,6 @@ const PRODUCT_SERVICES = [
   { title: 'Tactile membrane keypads', description: 'Durable input panels for control and operator interfaces.' },
   { title: 'Integrated circuits (ICs)', description: 'Electronic components for control, automation, and repair needs.' },
   { title: 'Industrial cooling fans', description: 'Efficient cooling support for machines and electrical panels.' },
-  { title: 'Electrical equipment repair and maintenance', description: 'Support for repairs, servicing, and preventive maintenance.' },
   { title: 'CNC machine maintenance and engineering support', description: 'Practical maintenance and engineering assistance for CNC operations.' }
 ];
 
@@ -90,29 +90,7 @@ function ensureDataFiles() {
   syncProjectFileFromRuntime(SETTINGS_FILE);
 
   if (!fs.existsSync(SPARES_FILE)) {
-    writeJson(SPARES_FILE, [
-      {
-        id: 'spare-1',
-        title: 'Spindle Bearing Kit',
-        category: 'Spindle Parts',
-        details: 'High-performance bearing kit suitable for CNC spindle assemblies. Ideal for replacement during routine maintenance or after wear detection. Please enquire for compatibility and availability.',
-        imagePublicId: 'cnc-spares/spindle-bearing-kit'
-      },
-      {
-        id: 'spare-2',
-        title: 'Servo Motor Encoder',
-        category: 'Drive Components',
-        details: 'Precision encoder for servo motors. Helps maintain accurate motion feedback for CNC positioning systems. Enquire for model compatibility and stock information.',
-        imagePublicId: 'cnc-spares/servo-encoder'
-      },
-      {
-        id: 'spare-3',
-        title: 'Ball Screw Assembly',
-        category: 'Linear Motion',
-        details: 'Durable ball screw assembly for smooth axis movement. Recommended for refurbishment and replacement jobs. Contact us for exact size and fitment details.',
-        imagePublicId: 'cnc-spares/ball-screw'
-      }
-    ]);
+    writeJson(SPARES_FILE, []);
   }
   if (!fs.existsSync(INQUIRIES_FILE)) writeJson(INQUIRIES_FILE, []);
   if (!fs.existsSync(SETTINGS_FILE)) {
@@ -185,8 +163,14 @@ function writeJson(filePath, data) {
 
 async function loadData() {
   ensureDataFiles();
+  const storedSpares = await readJson(SPARES_FILE, []);
+  const spares = storedSpares.filter((spare) => !LEGACY_STARTER_SPARE_IDS.has(spare.id));
+  if (spares.length !== storedSpares.length) {
+    await persistJson(SPARES_FILE, spares);
+  }
+
   return {
-    spares: await readJson(SPARES_FILE, []),
+    spares,
     inquiries: await readJson(INQUIRIES_FILE, []),
     settings: await readJson(SETTINGS_FILE, {})
   };
