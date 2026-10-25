@@ -139,8 +139,8 @@ header {
 
 .navbar {
   height: var(--header-height);
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 1.5rem;
 }
@@ -149,6 +149,7 @@ header {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  min-width: 0;
 }
 
 .brand-logo-wrap {
@@ -199,6 +200,7 @@ header {
   display: flex;
   align-items: center;
   gap: 0.35rem;
+  white-space: nowrap;
 }
 
 .brand span.accent {
@@ -209,6 +211,7 @@ header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  justify-self: center;
 }
 
 .nav-link {
@@ -237,6 +240,7 @@ header {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  justify-self: end;
 }
 
 .nav-cta-btn {
@@ -358,7 +362,7 @@ header {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-top: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 0.65rem 1rem;
+  padding: 0.4rem 1rem;
   z-index: 998;
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
 }
@@ -378,10 +382,16 @@ header {
   gap: 0.45rem;
   font-size: 0.9rem;
   font-weight: 700;
-  padding: 0.7rem 0.5rem;
+  padding: 0.45rem 0.5rem;
   border-radius: var(--radius-full);
   text-align: center;
-  min-height: 44px;
+  min-height: 40px;
+}
+
+.mobile-action-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .mobile-call-btn {
@@ -394,15 +404,21 @@ header {
   color: white;
 }
 
-@media (max-width: 768px) {
-  body {
-    padding-bottom: 64px; /* Space for mobile bottom bar */
+@media (max-width: 1000px) {
+  .navbar {
+    grid-template-columns: minmax(0, 1fr) auto;
   }
   .nav-links, .nav-cta-btn {
     display: none;
   }
   .menu-toggle {
     display: flex;
+  }
+}
+
+@media (max-width: 768px) {
+  body {
+    padding-bottom: 56px;
   }
   .mobile-bottom-bar {
     display: block;
