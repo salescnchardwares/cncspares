@@ -22,8 +22,7 @@ const PRODUCT_SERVICES = [
   { title: 'Tactile membrane keypads', description: 'Durable input panels for control and operator interfaces.' },
   { title: 'Integrated circuits (ICs)', description: 'Electronic components for control, automation, and repair needs.' },
   { title: 'Industrial cooling fans', description: 'Efficient cooling support for machines and electrical panels.' },
-  { title: 'Electrical equipment repair and maintenance', description: 'Support for repairs, servicing, and preventive maintenance.' },
-  { title: 'CNC machine maintenance and engineering support', description: 'Practical maintenance and engineering assistance for CNC operations.' }
+  { title: 'CNC machine maintenance and Service support', description: 'Practical maintenance and service for CNC operations.' }
 ];
 
 app.set('view engine', 'ejs');
