@@ -6,6 +6,7 @@
     <title>Company Details | Admin Portal</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="stylesheet" href="/styles.css" />
+    <script src="/app.js" defer></script>
   </head>
   <body style="background: var(--bg);">
     <div class="container" style="padding: 2rem 0 4rem;">
@@ -36,7 +37,7 @@
           </div>
         </div>
 
-        <form method="post" action="/Updates/settings" enctype="multipart/form-data">
+        <form id="companyForm" method="post" action="/Updates/settings" enctype="multipart/form-data">
           <!-- Section 1: Business Details -->
           <div style="margin-bottom: 2rem;">
             <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
@@ -93,7 +94,8 @@
                 <div class="form-group">
                   <label for="logoFile">Upload Logo File</label>
                   <input id="logoFile" type="file" name="logoFile" accept="image/*" />
-                  <div class="input-help">Supports PNG, JPG, WebP, SVG. Uploaded directly to Cloudinary if configured.</div>
+                  <div class="input-help">Supports PNG, JPG, WebP, SVG. Uploaded directly to Cloudinary if configured. Images are automatically optimized before upload.</div>
+                  <div id="logoOptimizationStatus" style="margin-top: 0.6rem; display: none;"></div>
                 </div>
               </div>
               <div>

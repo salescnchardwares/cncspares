@@ -65,7 +65,16 @@ Set the following environment variables in Vercel for production use:
 - `CLOUDINARY_CLOUD_NAME` — Cloudinary cloud name if using remote image uploads
 - `CLOUDINARY_UPLOAD_PRESET` — Cloudinary upload preset
 
-> Note: The app writes JSON files to `data/` at runtime. For production deployments, use an external database or persistent storage integration when needed.
+### Persistent data (Spares, Orders & Settings) with Supabase
+
+Vercel's serverless filesystem is ephemeral (`/tmp` is recycled across instances), so Supabase is used to keep products/spares catalog, customer enquiries, and company settings permanently retained:
+
+1. Run [`supabase/schema.sql`](./supabase/schema.sql) in the Supabase SQL Editor (creates `site_inquiries`, `site_spares`, and `site_settings`).
+2. Add these environment variables to your Vercel project and redeploy:
+   - `SUPABASE_URL` — your Supabase project URL
+   - `SUPABASE_SERVICE_ROLE_KEY` — your project's service-role key (keep secret)
+
+When configured, the app stores spare parts catalog items, contact enquiries, and company configuration in Supabase with automatic local caching. The admin panel also includes automatic client-side photo compression (< 500 KB) so photo uploads from smartphone cameras never exceed Vercel's 4.5 MB serverless payload limit. Local development continues to use the JSON files in `data/`.
 
 ## Single Command for Frontend and Backend
 

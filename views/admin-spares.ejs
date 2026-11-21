@@ -6,6 +6,7 @@
     <title>Manage Spares | Admin Portal</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="stylesheet" href="/styles.css" />
+    <script src="/app.js" defer></script>
   </head>
   <body style="background: var(--bg);">
     <div class="container" style="padding: 2rem 0 4rem;">
@@ -32,8 +33,16 @@
       <div class="card admin-card reveal">
         <div class="admin-section-header">
           <div>
-            <h3><%= editingSpare ? 'Edit Spare Part' : 'Add New Spare Part' %></h3>
-            <p class="muted" style="margin: 0; font-size: 0.9rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+              <h3 style="margin: 0;"><%= editingSpare ? 'Edit Spare Part' : 'Add New Spare Part' %></h3>
+              <% if (typeof hasSupabase !== 'undefined' && hasSupabase) { %>
+                <span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #059669; border: 1px solid rgba(16, 185, 129, 0.25); font-size: 0.76rem; padding: 0.2rem 0.6rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+                  <span style="width: 7px; height: 7px; background: #10b981; border-radius: 50%; display: inline-block;"></span>
+                  Durable Cloud Persistence Active
+                </span>
+              <% } %>
+            </div>
+            <p class="muted" style="margin: 0.35rem 0 0; font-size: 0.9rem;">
               <%= editingSpare ? `Editing "${editingSpare.title}"` : 'Enter the part specifications and image to publish to the catalog.' %>
             </p>
           </div>
@@ -42,7 +51,7 @@
           <% } %>
         </div>
 
-        <form method="post" action="/Updates/spares" enctype="multipart/form-data">
+        <form id="spareForm" method="post" action="/Updates/spares" enctype="multipart/form-data">
           <input type="hidden" name="id" value="<%= editingSpare ? editingSpare.id : '' %>" />
 
           <div class="admin-grid">
@@ -67,7 +76,8 @@
               <div class="form-group">
                 <label for="imageFile">Upload Photo (Cloudinary)</label>
                 <input id="imageFile" name="imageFile" type="file" accept="image/*" />
-                <div class="input-help">Will be uploaded to your Cloudinary storage if configured.</div>
+                <div class="input-help">Will be uploaded to your Cloudinary storage if configured. Photos are automatically compressed before upload to prevent server limits.</div>
+                <div id="imageOptimizationStatus" style="margin-top: 0.6rem; display: none;"></div>
               </div>
 
               <div class="form-group">

@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node tests/logo-feature.test.js"
+    "test": "node tests/logo-feature.test.js && node tests/storage-persistence.test.js && node tests/supabase-inquiry-persistence.test.js && node tests/spares-persistence.test.js && node tests/enquiry-duplication.test.js && node tests/admin-session-persistence.test.js"
   },
   "dependencies": {
     "ejs": "^3.1.10",

@@ -3,6 +3,7 @@ const assert = require('assert');
 process.env.VERCEL = '1';
 process.env.NODE_ENV = 'production';
 process.env.PORT = '0';
+process.env.INQUIRY_STORAGE = 'json';
 
 (async () => {
   delete require.cache[require.resolve('../server')];

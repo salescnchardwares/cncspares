@@ -4,10 +4,59 @@ const express = require('express');
 const session = require('express-session');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const nodemailer = require('nodemailer');
 const multer = require('multer');
 
-const upload = multer({ storage: multer.memoryStorage() });
+const BASE_TMP_DIR = process.platform === 'win32' ? os.tmpdir() : '/tmp';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 4.5 * 1024 * 1024 // 4.5 MB Vercel Serverless Function Limit
+  }
+});
+
+function handleUpload(fieldName) {
+  const uploadSingle = upload.single(fieldName);
+  return (req, res, next) => {
+    uploadSingle(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).send(`
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>File Size Exceeded | CNC Hardwares</title>
+              <link rel="stylesheet" href="/styles.css">
+            </head>
+            <body style="background: var(--bg); display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif; padding: 1rem;">
+              <div class="card" style="max-width: 520px; width: 100%; text-align: center; padding: 2.5rem 2rem; border-radius: 14px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);">
+                <div style="width: 56px; height: 56px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem;">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                </div>
+                <h2 style="color: var(--primary, #0c2340); margin: 0 0 0.5rem; font-size: 1.4rem;">File Upload Too Large</h2>
+                <p style="color: var(--text-muted, #64748b); font-size: 0.95rem; line-height: 1.6; margin: 0 0 1.5rem;">
+                  The photo you selected exceeds the 4.5 MB serverless upload limit. Our admin portal automatically compresses photos when JavaScript is enabled, or you can select a photo under 4.5 MB.
+                </p>
+                <a href="javascript:history.back()" class="btn btn-primary" style="display: inline-block; padding: 0.75rem 1.75rem; text-decoration: none; border-radius: 8px;">
+                  ← Go Back and Try Again
+                </a>
+              </div>
+            </body>
+            </html>
+          `);
+        }
+        return res.status(400).send(`Upload error: ${err.message}`);
+      } else if (err) {
+        return res.status(400).send(`Upload error: ${err.message}`);
+      }
+      next();
+    });
+  };
+}
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -56,13 +105,13 @@ function isWritableDir(dirPath) {
 }
 
 function resolveStoragePath(filePath) {
+  const relativePath = path.relative(__dirname, filePath) || path.basename(filePath);
   if (process.env.VERCEL === '1') {
-    const relativePath = path.relative(__dirname, filePath) || path.basename(filePath);
-    return path.join('/tmp', 'cnc-spares', relativePath);
+    return path.join(BASE_TMP_DIR, 'cnc-spares', relativePath);
   }
 
   const dirPath = path.dirname(filePath);
-  return isWritableDir(dirPath) ? filePath : path.join('/tmp', 'cnc-spares', path.basename(filePath));
+  return isWritableDir(dirPath) ? filePath : path.join(BASE_TMP_DIR, 'cnc-spares', relativePath);
 }
 
 function syncProjectFileFromRuntime(filePath) {
@@ -73,7 +122,7 @@ function syncProjectFileFromRuntime(filePath) {
 
   try {
     const runtimeData = fs.readFileSync(targetPath, 'utf8');
-    if (!fs.existsSync(filePath)) {
+    if (!fs.existsSync(filePath) && process.env.VERCEL !== '1') {
       fs.mkdirSync(path.dirname(filePath), { recursive: true });
       fs.writeFileSync(filePath, runtimeData);
     }
@@ -122,7 +171,7 @@ function readJson(filePath, fallback) {
   try {
     if (fs.existsSync(targetPath)) {
       const data = JSON.parse(fs.readFileSync(targetPath, 'utf8'));
-      if (targetPath !== filePath && !fs.existsSync(filePath)) {
+      if (targetPath !== filePath && !fs.existsSync(filePath) && process.env.VERCEL !== '1') {
         fs.mkdirSync(path.dirname(filePath), { recursive: true });
         fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
       }
@@ -150,9 +199,13 @@ function writeJson(filePath, data) {
   try {
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
     fs.writeFileSync(targetPath, JSON.stringify(data, null, 2));
-    if (targetPath !== filePath) {
-      fs.mkdirSync(path.dirname(filePath), { recursive: true });
-      fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    if (targetPath !== filePath && process.env.VERCEL !== '1') {
+      try {
+        fs.mkdirSync(path.dirname(filePath), { recursive: true });
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+      } catch (err) {
+        // Read-only filesystem in Vercel or restricted environment
+      }
     }
     return targetPath;
   } catch (error) {
@@ -161,23 +214,396 @@ function writeJson(filePath, data) {
   }
 }
 
-async function loadData() {
-  ensureDataFiles();
-  const storedSpares = await readJson(SPARES_FILE, []);
-  const spares = storedSpares.filter((spare) => !LEGACY_STARTER_SPARE_IDS.has(spare.id));
-  if (spares.length !== storedSpares.length) {
-    await persistJson(SPARES_FILE, spares);
+async function persistJson(filePath, data) {
+  return writeJson(filePath, data);
+}
+
+function getSupabaseConfig() {
+  const url = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url && !serviceRoleKey) return null;
+  if (!url || !serviceRoleKey) {
+    throw new Error('Both SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured.');
   }
 
+  return { url: url.replace(/\/+$/, ''), serviceRoleKey };
+}
+
+function hasDurableInquiryStorage() {
+  return Boolean(getSupabaseConfig()) ||
+    process.env.VERCEL !== '1' ||
+    process.env.INQUIRY_STORAGE === 'json';
+}
+
+async function requestSupabase(endpoint, options = {}) {
+  const config = getSupabaseConfig();
+  if (!config) {
+    throw new Error('Supabase storage is not configured.');
+  }
+
+  const response = await fetch(`${config.url}/rest/v1/${endpoint}`, {
+    ...options,
+    headers: {
+      apikey: config.serviceRoleKey,
+      Authorization: `Bearer ${config.serviceRoleKey}`,
+      'Content-Type': 'application/json',
+      ...options.headers
+    }
+  });
+
+  return response;
+}
+
+async function requestSupabaseInquiries(endpoint, options = {}) {
+  const response = await requestSupabase(endpoint, options);
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(`Supabase inquiry storage returned ${response.status}: ${details}`);
+  }
+  return response;
+}
+
+async function loadInquiries() {
+  const config = getSupabaseConfig();
+  if (!config) return readJson(INQUIRIES_FILE, []);
+
+  try {
+    const endpoint = new URL(`${config.url}/rest/v1/site_inquiries`);
+    endpoint.searchParams.set('select', 'record');
+    endpoint.searchParams.set('order', 'created_at.desc');
+    const response = await requestSupabaseInquiries(
+      `${endpoint.pathname.replace('/rest/v1/', '')}${endpoint.search}`,
+      { method: 'GET' }
+    );
+    const rows = await response.json();
+    return rows
+      .map((row) => row.record)
+      .filter((record) => record && !String(record.id || '').startsWith('__site_'));
+  } catch (error) {
+    console.warn('[Supabase Inquiries] Falling back to local inquiries:', error.message);
+    return readJson(INQUIRIES_FILE, []);
+  }
+}
+
+async function loadSpares() {
+  const config = getSupabaseConfig();
+  if (!config) {
+    const storedSpares = readJson(SPARES_FILE, []);
+    return storedSpares.filter((spare) => !LEGACY_STARTER_SPARE_IDS.has(spare.id));
+  }
+
+  // 1. Try dedicated site_spares table
+  try {
+    const endpoint = new URL(`${config.url}/rest/v1/site_spares`);
+    endpoint.searchParams.set('select', 'record');
+    endpoint.searchParams.set('order', 'created_at.asc');
+    const response = await requestSupabase(
+      `${endpoint.pathname.replace('/rest/v1/', '')}${endpoint.search}`,
+      { method: 'GET' }
+    );
+    if (response.ok) {
+      const rows = await response.json();
+      if (Array.isArray(rows) && rows.length > 0) {
+        const spares = rows
+          .map((row) => row.record)
+          .filter((spare) => spare && spare.id && !LEGACY_STARTER_SPARE_IDS.has(spare.id));
+        writeJson(SPARES_FILE, spares);
+        return spares;
+      }
+
+      // If site_spares exists but is empty, seed from local spares.json
+      const storedSpares = readJson(SPARES_FILE, []).filter((spare) => !LEGACY_STARTER_SPARE_IDS.has(spare.id));
+      if (storedSpares.length > 0) {
+        for (const spare of storedSpares) {
+          await persistSpareRecord(spare);
+        }
+      }
+      return storedSpares;
+    }
+  } catch (error) {
+    // site_spares query failed, try fallback
+  }
+
+  // 2. Fallback: Check for __site_spares_catalog__ in site_inquiries
+  try {
+    const endpoint = new URL(`${config.url}/rest/v1/site_inquiries`);
+    endpoint.searchParams.set('id', 'eq.__site_spares_catalog__');
+    endpoint.searchParams.set('select', 'record');
+    const response = await requestSupabase(
+      `${endpoint.pathname.replace('/rest/v1/', '')}${endpoint.search}`,
+      { method: 'GET' }
+    );
+    if (response.ok) {
+      const rows = await response.json();
+      if (Array.isArray(rows) && rows.length > 0 && Array.isArray(rows[0].record?.spares)) {
+        const spares = rows[0].record.spares.filter((spare) => spare && spare.id && !LEGACY_STARTER_SPARE_IDS.has(spare.id));
+        writeJson(SPARES_FILE, spares);
+        return spares;
+      }
+    }
+  } catch (error) {
+    // fallback check failed
+  }
+
+  // 3. Fallback to local file
+  const storedSpares = readJson(SPARES_FILE, []);
+  return storedSpares.filter((spare) => !LEGACY_STARTER_SPARE_IDS.has(spare.id));
+}
+
+async function persistSpareRecord(spare) {
+  const config = getSupabaseConfig();
+  if (config) {
+    let savedToTable = false;
+    try {
+      const row = {
+        id: spare.id,
+        created_at: spare.createdAt || new Date().toISOString(),
+        record: spare
+      };
+      const response = await requestSupabase('site_spares?on_conflict=id', {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify([row])
+      });
+      if (response.ok) savedToTable = true;
+    } catch (error) {
+      // site_spares might not exist yet
+    }
+
+    if (!savedToTable) {
+      try {
+        const stored = readJson(SPARES_FILE, []);
+        const idx = stored.findIndex((s) => s.id === spare.id);
+        const updatedCatalog = [...stored];
+        if (idx === -1) {
+          updatedCatalog.push(spare);
+        } else {
+          updatedCatalog[idx] = spare;
+        }
+
+        const fallbackRow = {
+          id: '__site_spares_catalog__',
+          created_at: new Date().toISOString(),
+          record: { id: '__site_spares_catalog__', spares: updatedCatalog }
+        };
+        await requestSupabase('site_inquiries?on_conflict=id', {
+          method: 'POST',
+          headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify([fallbackRow])
+        });
+      } catch (err) {
+        // ignore
+      }
+    }
+  }
+
+  const stored = readJson(SPARES_FILE, []);
+  const index = stored.findIndex((s) => s.id === spare.id);
+  if (index === -1) {
+    stored.push(spare);
+  } else {
+    stored[index] = spare;
+  }
+  await persistJson(SPARES_FILE, stored);
+}
+
+async function deleteSpareRecord(id) {
+  const config = getSupabaseConfig();
+  if (config) {
+    let deletedFromTable = false;
+    try {
+      const endpoint = new URL(`${config.url}/rest/v1/site_spares`);
+      endpoint.searchParams.set('id', `eq.${id}`);
+      const response = await requestSupabase(`${endpoint.pathname.replace('/rest/v1/', '')}${endpoint.search}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) deletedFromTable = true;
+    } catch (error) {
+      // ignore
+    }
+
+    if (!deletedFromTable) {
+      try {
+        const stored = readJson(SPARES_FILE, []).filter((s) => s.id !== id);
+        const fallbackRow = {
+          id: '__site_spares_catalog__',
+          created_at: new Date().toISOString(),
+          record: { id: '__site_spares_catalog__', spares: stored }
+        };
+        await requestSupabase('site_inquiries?on_conflict=id', {
+          method: 'POST',
+          headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify([fallbackRow])
+        });
+      } catch (err) {
+        // ignore
+      }
+    }
+  }
+
+  const stored = readJson(SPARES_FILE, []);
+  const filtered = stored.filter((s) => s.id !== id);
+  await persistJson(SPARES_FILE, filtered);
+}
+
+async function loadSettings() {
+  const fallbackSettings = readJson(SETTINGS_FILE, {});
+  const config = getSupabaseConfig();
+  if (!config) return fallbackSettings;
+
+  try {
+    const endpoint = new URL(`${config.url}/rest/v1/site_settings`);
+    endpoint.searchParams.set('id', 'eq.default');
+    endpoint.searchParams.set('select', 'record');
+    const response = await requestSupabase(
+      `${endpoint.pathname.replace('/rest/v1/', '')}${endpoint.search}`,
+      { method: 'GET' }
+    );
+    if (response.ok) {
+      const rows = await response.json();
+      if (Array.isArray(rows) && rows.length > 0 && rows[0].record) {
+        const merged = { ...fallbackSettings, ...rows[0].record };
+        writeJson(SETTINGS_FILE, merged);
+        return merged;
+      }
+    }
+  } catch (error) {
+    // ignore
+  }
+
+  try {
+    const endpoint = new URL(`${config.url}/rest/v1/site_inquiries`);
+    endpoint.searchParams.set('id', 'eq.__site_settings_record__');
+    endpoint.searchParams.set('select', 'record');
+    const response = await requestSupabase(
+      `${endpoint.pathname.replace('/rest/v1/', '')}${endpoint.search}`,
+      { method: 'GET' }
+    );
+    if (response.ok) {
+      const rows = await response.json();
+      if (Array.isArray(rows) && rows.length > 0 && rows[0].record?.settings) {
+        const merged = { ...fallbackSettings, ...rows[0].record.settings };
+        writeJson(SETTINGS_FILE, merged);
+        return merged;
+      }
+    }
+  } catch (error) {
+    // ignore
+  }
+
+  return fallbackSettings;
+}
+
+async function persistSettingsRecord(settings) {
+  const config = getSupabaseConfig();
+  if (config) {
+    let savedToTable = false;
+    try {
+      const row = {
+        id: 'default',
+        updated_at: new Date().toISOString(),
+        record: settings
+      };
+      const response = await requestSupabase('site_settings?on_conflict=id', {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify([row])
+      });
+      if (response.ok) savedToTable = true;
+    } catch (error) {
+      // ignore
+    }
+
+    if (!savedToTable) {
+      try {
+        const fallbackRow = {
+          id: '__site_settings_record__',
+          created_at: new Date().toISOString(),
+          record: { id: '__site_settings_record__', settings }
+        };
+        await requestSupabase('site_inquiries?on_conflict=id', {
+          method: 'POST',
+          headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify([fallbackRow])
+        });
+      } catch (err) {
+        // ignore
+      }
+    }
+  }
+
+  await persistJson(SETTINGS_FILE, settings);
+}
+
+async function loadData() {
+  ensureDataFiles();
   return {
-    spares,
-    inquiries: await readJson(INQUIRIES_FILE, []),
-    settings: await readJson(SETTINGS_FILE, {})
+    spares: await loadSpares(),
+    inquiries: await loadInquiries(),
+    settings: await loadSettings()
   };
 }
 
-async function persistJson(filePath, data) {
-  return writeJson(filePath, data);
+async function persistInquiryRecord(inquiry) {
+  const config = getSupabaseConfig();
+  if (config) {
+    const row = {
+      id: inquiry.id,
+      created_at: inquiry.createdAt || new Date().toISOString(),
+      record: inquiry
+    };
+    await requestSupabaseInquiries('site_inquiries?on_conflict=id', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify([row])
+    });
+    return;
+  }
+
+  const inquiries = await readJson(INQUIRIES_FILE, []);
+  const existingIndex = inquiries.findIndex((item) => item.id === inquiry.id);
+  if (existingIndex === -1) {
+    inquiries.unshift(inquiry);
+  } else {
+    inquiries[existingIndex] = inquiry;
+  }
+  await persistJson(INQUIRIES_FILE, inquiries);
+
+  const savedInquiries = await readJson(INQUIRIES_FILE, []);
+  if (!savedInquiries.some((item) => item.id === inquiry.id)) {
+    throw new Error('The inquiry could not be saved to local storage.');
+  }
+}
+
+async function deleteInquiryRecord(id) {
+  const config = getSupabaseConfig();
+  if (config) {
+    const endpoint = new URL(`${config.url}/rest/v1/site_inquiries`);
+    endpoint.searchParams.set('id', `eq.${id}`);
+    await requestSupabaseInquiries(`${endpoint.pathname.replace('/rest/v1/', '')}${endpoint.search}`, {
+      method: 'DELETE'
+    });
+    return;
+  }
+
+  const inquiries = await readJson(INQUIRIES_FILE, []);
+  await persistJson(INQUIRIES_FILE, inquiries.filter((item) => item.id !== id));
+}
+
+function sendInquiryStorageUnavailable(res) {
+  return res.status(503).send(
+    'Enquiry storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY before accepting enquiries.'
+  );
+}
+
+function requireInquiryStorage(res) {
+  try {
+    if (hasDurableInquiryStorage()) return true;
+  } catch (error) {
+    console.error('Inquiry storage configuration error:', error);
+  }
+  sendInquiryStorageUnavailable(res);
+  return false;
 }
 
 function toCsvValue(value) {
@@ -400,7 +826,8 @@ app.get('/contact', async (req, res) => {
 });
 
 app.post('/contact', async (req, res) => {
-  const { settings } = await loadData();
+  if (!requireInquiryStorage(res)) return;
+  const { settings, inquiries } = await loadData();
   if (req.body.website && req.body.website.trim()) {
     return res.redirect('/contact?submitted=1');
   }
@@ -422,7 +849,6 @@ app.post('/contact', async (req, res) => {
     createdAt: new Date().toISOString()
   };
 
-  const { inquiries } = await loadData();
   const contactFingerprint = buildInquiryFingerprint('contact', request);
   const existingContactRequest = hasRecentDuplicateInquiry(inquiries, contactFingerprint);
   if (existingContactRequest) {
@@ -430,8 +856,12 @@ app.post('/contact', async (req, res) => {
   }
 
   request.enquiryFingerprint = contactFingerprint;
-  inquiries.unshift(request);
-  await persistJson(INQUIRIES_FILE, inquiries);
+  try {
+    await persistInquiryRecord(request);
+  } catch (error) {
+    console.error('Failed to persist contact enquiry:', error);
+    return res.status(503).send('We could not save your enquiry. Please try again later.');
+  }
 
   const adminEmail = settings.adminEmail || 'sales.cnchardwares@gmail.com';
   const adminHtml = `
@@ -470,6 +900,7 @@ app.get('/enquire/:id', async (req, res) => {
 });
 
 app.post('/enquire/:id', async (req, res) => {
+  if (!requireInquiryStorage(res)) return;
   const { spares, inquiries, settings } = await loadData();
   if (req.body.website && req.body.website.trim()) {
     return res.redirect('/?submitted=1');
@@ -502,8 +933,12 @@ app.post('/enquire/:id', async (req, res) => {
   }
 
   enquiry.enquiryFingerprint = enquiryFingerprint;
-  inquiries.unshift(enquiry);
-  await persistJson(INQUIRIES_FILE, inquiries);
+  try {
+    await persistInquiryRecord(enquiry);
+  } catch (error) {
+    console.error('Failed to persist product enquiry:', error);
+    return res.status(503).send('We could not save your enquiry. Please try again later.');
+  }
 
   const adminEmail = settings.adminEmail || process.env.ADMIN_EMAIL || 'sales.cnchardwares@gmail.com';
 
@@ -651,53 +1086,56 @@ app.get(['/Updates/company', '/updates/company', '/admin/company'], async (req, 
 app.get(['/Updates/spares', '/updates/spares', '/admin/spares'], async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/Updates/login');
   const { spares, inquiries, settings } = await loadData();
-  res.render('admin-spares', { spares, inquiries, settings, editingSpare: null, adminBase: '/Updates' });
+  const hasSupabase = Boolean(getSupabaseConfig());
+  res.render('admin-spares', { spares, inquiries, settings, editingSpare: null, adminBase: '/Updates', hasSupabase });
 });
 
 app.get(['/Updates/spares/:id/edit', '/updates/spares/:id/edit', '/admin/spares/:id/edit'], async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/Updates/login');
   const { spares, inquiries, settings } = await loadData();
   const editingSpare = spares.find((item) => item.id === req.params.id) || null;
-  res.render('admin-spares', { spares, inquiries, settings, editingSpare, adminBase: '/Updates' });
+  const hasSupabase = Boolean(getSupabaseConfig());
+  res.render('admin-spares', { spares, inquiries, settings, editingSpare, adminBase: '/Updates', hasSupabase });
 });
 
-app.post(['/Updates/spares', '/updates/spares', '/admin/spares'], upload.single('imageFile'), async (req, res) => {
+app.post(['/Updates/spares', '/updates/spares', '/admin/spares'], handleUpload('imageFile'), async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/Updates/login');
-  const { spares, settings } = await loadData();
+  const { settings } = await loadData();
   const spareId = req.body.id || `spare-${Date.now()}`;
-  const updatedSpares = spares.filter((item) => item.id !== spareId);
   let imageUpload = null;
 
   if (req.file) {
     try {
       imageUpload = await uploadToCloudinary(req.file.buffer, req.file.originalname, settings);
     } catch (error) {
-      console.error(error);
+      console.error('Cloudinary upload error:', error);
     }
   }
 
-  updatedSpares.push({
+  const spare = {
     id: spareId,
     title: req.body.title,
     category: req.body.category,
     details: req.body.details,
     imageUrl: imageUpload?.imageUrl || req.body.imageUrl || '',
     imagePublicId: imageUpload?.imagePublicId || req.body.imagePublicId || '',
-    imageAlt: req.body.imageAlt || req.body.title
-  });
-  persistJson(SPARES_FILE, updatedSpares);
+    imageAlt: req.body.imageAlt || req.body.title,
+    updatedAt: new Date().toISOString()
+  };
+
+  await persistSpareRecord(spare);
   res.redirect('/Updates/spares');
 });
 
 app.post(['/Updates/spares/delete', '/updates/spares/delete', '/admin/spares/delete'], async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/Updates/login');
-  const { spares } = await loadData();
-  const filtered = spares.filter((item) => item.id !== req.body.id);
-  await persistJson(SPARES_FILE, filtered);
+  if (req.body.id) {
+    await deleteSpareRecord(req.body.id);
+  }
   res.redirect('/Updates/spares');
 });
 
-app.post(['/Updates/settings', '/updates/settings', '/admin/settings'], upload.single('logoFile'), async (req, res) => {
+app.post(['/Updates/settings', '/updates/settings', '/admin/settings'], handleUpload('logoFile'), async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/Updates/login');
   const { settings: current } = await loadData();
   let logoUrl = req.body.companyLogoUrl || current.companyLogoUrl || '';
@@ -711,7 +1149,7 @@ app.post(['/Updates/settings', '/updates/settings', '/admin/settings'], upload.s
         logoPublicId = uploadResult.imagePublicId;
       }
     } catch (error) {
-      console.error(error);
+      console.error('Cloudinary logo upload error:', error);
     }
   }
 
@@ -735,7 +1173,7 @@ app.post(['/Updates/settings', '/updates/settings', '/admin/settings'], upload.s
     companyLogoUrl: logoUrl,
     companyLogoPublicId: logoPublicId
   };
-  persistJson(SETTINGS_FILE, settings);
+  await persistSettingsRecord(settings);
   res.redirect('/Updates/company');
 });
 
@@ -746,18 +1184,26 @@ app.post(['/Updates/analytics-toggle', '/updates/analytics-toggle', '/admin/anal
     ...settings,
     analyticsEnabled: req.body.analyticsEnabled === 'on'
   };
-  await persistJson(SETTINGS_FILE, updatedSettings);
+  await persistSettingsRecord(updatedSettings);
   res.redirect('/Updates');
 });
 
 app.get(['/Updates/orders', '/updates/orders', '/admin/orders'], async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/Updates/login');
-  const { inquiries, settings } = await loadData();
+  let data;
+  try {
+    data = await loadData();
+  } catch (error) {
+    console.error('Failed to load admin enquiries:', error);
+    return res.status(503).send('Enquiries are temporarily unavailable. Please try again later.');
+  }
+  const { inquiries, settings } = data;
   res.render('admin-orders', { inquiries, settings, adminBase: '/Updates', updated: req.query.updated === '1' });
 });
 
 app.post(['/Updates/orders/:id/status', '/updates/orders/:id/status', '/admin/orders/:id/status'], async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/Updates/login');
+  if (!requireInquiryStorage(res)) return;
   const { inquiries, settings } = await loadData();
   const enquiry = inquiries.find((item) => item.id === req.params.id);
   if (!enquiry) {
@@ -766,7 +1212,12 @@ app.post(['/Updates/orders/:id/status', '/updates/orders/:id/status', '/admin/or
 
   enquiry.status = req.body.status;
   enquiry.updatedAt = new Date().toISOString();
-  await persistJson(INQUIRIES_FILE, inquiries);
+  try {
+    await persistInquiryRecord(enquiry);
+  } catch (error) {
+    console.error('Failed to update enquiry status:', error);
+    return res.status(503).send('The enquiry could not be updated. Please try again later.');
+  }
 
   if (enquiry.emailId && enquiry.emailId.trim()) {
     const statusColor = 
@@ -842,9 +1293,13 @@ app.post(['/Updates/orders/:id/status', '/updates/orders/:id/status', '/admin/or
 
 app.post(['/Updates/orders/delete', '/updates/orders/delete', '/admin/orders/delete'], async (req, res) => {
   if (!isAdmin(req)) return res.redirect('/Updates/login');
-  const { inquiries } = await loadData();
-  const filtered = inquiries.filter((item) => item.id !== req.body.id);
-  persistJson(INQUIRIES_FILE, filtered);
+  if (!requireInquiryStorage(res)) return;
+  try {
+    await deleteInquiryRecord(req.body.id);
+  } catch (error) {
+    console.error('Failed to delete enquiry:', error);
+    return res.status(503).send('The enquiry could not be deleted. Please try again later.');
+  }
   res.redirect('/Updates/orders');
 });
 
@@ -872,7 +1327,7 @@ app.post(['/Updates/password', '/updates/password', '/admin/password'], async (r
   }
 
   const updatedSettings = { ...settings, adminPassword: newPassword };
-  persistJson(SETTINGS_FILE, updatedSettings);
+  await persistSettingsRecord(updatedSettings);
   return res.render('admin-password', { settings: updatedSettings, message: 'Admin password updated successfully.', error: '', adminBase: '/Updates' });
 });
 

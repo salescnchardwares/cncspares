@@ -5,6 +5,7 @@ const fs = require('fs');
 process.env.VERCEL = '1';
 process.env.NODE_ENV = 'production';
 process.env.PORT = '0';
+process.env.INQUIRY_STORAGE = 'json';
 
 const app = require('../server');
 
