@@ -170,6 +170,37 @@
             </div>
           </div>
 
+          <!-- Section 5: Supabase Cloud Database -->
+          <div id="supabaseSection" style="margin-bottom: 2rem;">
+            <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
+              <span>5. Supabase Cloud Database (Permanent Storage on Vercel)</span>
+              <% if (settings.supabaseUrl || (typeof process !== 'undefined' && process.env.SUPABASE_URL)) { %>
+                <span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #059669; font-size: 0.75rem;">Connected</span>
+              <% } else { %>
+                <span class="badge" style="background: rgba(239, 68, 68, 0.1); color: #dc2626; font-size: 0.75rem;">Not Connected</span>
+              <% } %>
+            </h4>
+            <p class="muted" style="font-size: 0.88rem; margin: -0.5rem 0 1rem; line-height: 1.5;">
+              Keeps products, orders, and settings permanently retained across all Vercel serverless containers. Find these credentials in your <strong>Supabase Dashboard &gt; Project Settings (gear icon) &gt; API</strong>.
+            </p>
+            <div class="admin-grid">
+              <div>
+                <div class="form-group">
+                  <label for="supabaseUrl">Supabase Project URL</label>
+                  <input id="supabaseUrl" name="supabaseUrl" value="<%= settings.supabaseUrl || '' %>" placeholder="https://xyzcompany.supabase.co" />
+                  <div class="input-help">Found in Supabase Dashboard &gt; Project Settings &gt; API &gt; Project URL</div>
+                </div>
+              </div>
+              <div>
+                <div class="form-group">
+                  <label for="supabaseKey">Supabase Service Role Key (secret)</label>
+                  <input id="supabaseKey" name="supabaseKey" type="password" value="<%= settings.supabaseKey || '' %>" placeholder="eyJhbGciOi..." />
+                  <div class="input-help">Found in Supabase Dashboard &gt; Project Settings &gt; API &gt; Project API keys &gt; service_role (secret)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="form-actions" style="border-top: 1px solid var(--border); padding-top: 1.5rem;">
             <button class="btn btn-primary" type="submit" style="min-width: 220px;">
               <span>Save Company Details</span>

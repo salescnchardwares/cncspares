@@ -5,6 +5,7 @@ const session = require('express-session');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const multer = require('multer');
 
@@ -218,14 +219,11 @@ async function persistJson(filePath, data) {
   return writeJson(filePath, data);
 }
 
-function getSupabaseConfig() {
-  const url = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url && !serviceRoleKey) return null;
-  if (!url || !serviceRoleKey) {
-    throw new Error('Both SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured.');
-  }
-
+function getSupabaseConfig(settings) {
+  const current = settings || readJson(SETTINGS_FILE, {});
+  const url = (process.env.SUPABASE_URL || current.supabaseUrl || '').trim();
+  const serviceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || current.supabaseKey || current.supabaseServiceRoleKey || '').trim();
+  if (!url || !serviceRoleKey) return null;
   return { url: url.replace(/\/+$/, ''), serviceRoleKey };
 }
 
@@ -657,30 +655,78 @@ async function uploadToCloudinary(buffer, fileName, settings) {
     return null;
   }
 
-  const formData = new FormData();
-  formData.append('file', new Blob([buffer], { type: 'image/jpeg' }), fileName);
-  formData.append('upload_preset', uploadPreset);
-  formData.append('folder', settings.cloudinaryFolder || 'cnc-spares');
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-  const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-    method: 'POST',
-    body: formData
-  });
+  try {
+    const formData = new FormData();
+    formData.append('file', new Blob([buffer], { type: 'image/jpeg' }), fileName);
+    formData.append('upload_preset', uploadPreset);
+    formData.append('folder', settings.cloudinaryFolder || 'cnc-spares');
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Cloudinary upload failed: ${text}`);
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+      method: 'POST',
+      body: formData,
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Cloudinary upload failed: ${text}`);
+    }
+
+    const data = await response.json();
+    return {
+      imageUrl: data.secure_url,
+      imagePublicId: data.public_id
+    };
+  } finally {
+    clearTimeout(timeoutId);
   }
+}
 
-  const data = await response.json();
-  return {
-    imageUrl: data.secure_url,
-    imagePublicId: data.public_id
-  };
+function getAdminAuthSignature(secret, password) {
+  return crypto.createHmac('sha256', secret).update(`admin:${password}`).digest('hex');
+}
+
+function parseCookies(cookieHeader) {
+  const list = {};
+  if (!cookieHeader) return list;
+  cookieHeader.split(';').forEach((cookie) => {
+    const parts = cookie.split('=');
+    const name = parts.shift().trim();
+    const val = decodeURIComponent(parts.join('='));
+    if (name) list[name] = val;
+  });
+  return list;
 }
 
 function isAdmin(req) {
-  return !!req.session.adminAuthenticated;
+  if (req.session && req.session.adminAuthenticated) {
+    return true;
+  }
+
+  try {
+    const cookies = parseCookies(req.headers.cookie);
+    const authCookie = cookies.cnc_admin_auth;
+    if (!authCookie) return false;
+
+    const secret = process.env.SESSION_SECRET || 'cnc-spares-secret';
+    const settings = readJson(SETTINGS_FILE, {});
+    const expectedPassword = getAdminPassword(settings);
+    const expectedSignature = getAdminAuthSignature(secret, expectedPassword);
+
+    if (authCookie === expectedSignature) {
+      if (req.session) {
+        req.session.adminAuthenticated = true;
+      }
+      return true;
+    }
+  } catch (err) {
+    return false;
+  }
+
+  return false;
 }
 
 function getAdminPassword(settings) {
@@ -1052,12 +1098,21 @@ app.post(['/Updates/login', '/updates/login', '/admin/login'], async (req, res) 
   const expectedPassword = getAdminPassword(settings);
   if (password === expectedPassword) {
     req.session.adminAuthenticated = true;
+    const secret = process.env.SESSION_SECRET || 'cnc-spares-secret';
+    const authSignature = getAdminAuthSignature(secret, expectedPassword);
+    res.cookie('cnc_admin_auth', authSignature, {
+      httpOnly: true,
+      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+      sameSite: 'lax',
+      path: '/'
+    });
     return res.redirect('/Updates');
   }
   res.render('admin-login', { error: 'Incorrect password. Please try again.', adminBase: '/Updates' });
 });
 
 app.get(['/Updates/logout', '/updates/logout', '/admin/logout'], (req, res) => {
+  res.clearCookie('cnc_admin_auth', { path: '/' });
   req.session.destroy(() => {
     res.redirect('/Updates/login');
   });
@@ -1171,7 +1226,9 @@ app.post(['/Updates/settings', '/updates/settings', '/admin/settings'], handleUp
     cloudinaryUploadPreset: req.body.cloudinaryUploadPreset,
     cloudinaryFolder: req.body.cloudinaryFolder,
     companyLogoUrl: logoUrl,
-    companyLogoPublicId: logoPublicId
+    companyLogoPublicId: logoPublicId,
+    supabaseUrl: req.body.supabaseUrl ? req.body.supabaseUrl.trim() : (current.supabaseUrl || ''),
+    supabaseKey: req.body.supabaseKey ? req.body.supabaseKey.trim() : (current.supabaseKey || '')
   };
   await persistSettingsRecord(settings);
   res.redirect('/Updates/company');
