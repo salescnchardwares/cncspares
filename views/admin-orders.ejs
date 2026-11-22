@@ -122,11 +122,11 @@
                     <td>
                       <span class="small" style="display: block; margin-bottom: 0.25rem;">
                         <strong>Received:</strong><br />
-                        <%= enquiry.createdAt ? new Date(enquiry.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A' %>
+                        <%= enquiry.createdAt ? new Date(enquiry.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short', hour12: true }) : 'N/A' %>
                       </span>
                       <span class="small" style="display: block;">
                         <strong>Updated:</strong><br />
-                        <%= enquiry.updatedAt ? new Date(enquiry.updatedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A' %>
+                        <%= enquiry.updatedAt ? new Date(enquiry.updatedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short', hour12: true }) : 'N/A' %>
                       </span>
                     </td>
 
