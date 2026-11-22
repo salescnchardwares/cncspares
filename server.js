@@ -309,20 +309,10 @@ async function loadSpares() {
         return spares;
       }
 
-      // If site_spares exists but is empty, seed from local spares.json
-      const storedSpares = readJson(SPARES_FILE, []).filter((spare) => !LEGACY_STARTER_SPARE_IDS.has(spare.id));
-      if (storedSpares.length > 0) {
-        await requestSupabase('site_spares?on_conflict=id', {
-          method: 'POST',
-          headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-          body: JSON.stringify(storedSpares.map((spare) => ({
-            id: spare.id,
-            created_at: spare.createdAt || spare.updatedAt || new Date().toISOString(),
-            record: spare
-          })))
-        });
-      }
-      return storedSpares;
+      // site_spares exists and is empty: the catalog is genuinely empty (e.g. admin deleted
+      // everything). Do NOT re-seed from the bundled data/spares.json, or a starter item reappears.
+      writeJson(SPARES_FILE, []);
+      return [];
     }
   } catch (error) {
     // site_spares query failed, try fallback
