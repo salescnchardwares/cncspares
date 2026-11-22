@@ -220,9 +220,9 @@ async function persistJson(filePath, data) {
 }
 
 function getSupabaseConfig(settings) {
-  const current = settings || readJson(SETTINGS_FILE, {});
-  const url = (process.env.SUPABASE_URL || current.supabaseUrl || '').trim();
-  const serviceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || current.supabaseKey || current.supabaseServiceRoleKey || '').trim();
+  // Supabase credentials come ONLY from environment variables (set once in Vercel).
+  const url = (process.env.SUPABASE_URL || '').trim();
+  const serviceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
   if (!url || !serviceRoleKey) return null;
   return { url: url.replace(/\/+$/, ''), serviceRoleKey };
 }
@@ -312,9 +312,15 @@ async function loadSpares() {
       // If site_spares exists but is empty, seed from local spares.json
       const storedSpares = readJson(SPARES_FILE, []).filter((spare) => !LEGACY_STARTER_SPARE_IDS.has(spare.id));
       if (storedSpares.length > 0) {
-        for (const spare of storedSpares) {
-          await persistSpareRecord(spare);
-        }
+        await requestSupabase('site_spares?on_conflict=id', {
+          method: 'POST',
+          headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify(storedSpares.map((spare) => ({
+            id: spare.id,
+            created_at: spare.createdAt || spare.updatedAt || new Date().toISOString(),
+            record: spare
+          })))
+        });
       }
       return storedSpares;
     }
@@ -348,6 +354,27 @@ async function loadSpares() {
   return storedSpares.filter((spare) => !LEGACY_STARTER_SPARE_IDS.has(spare.id));
 }
 
+async function loadCatalogFromInquiries(config) {
+  try {
+    const endpoint = new URL(`${config.url}/rest/v1/site_inquiries`);
+    endpoint.searchParams.set('id', 'eq.__site_spares_catalog__');
+    endpoint.searchParams.set('select', 'record');
+    const response = await requestSupabase(
+      `${endpoint.pathname.replace('/rest/v1/', '')}${endpoint.search}`,
+      { method: 'GET' }
+    );
+    if (response.ok) {
+      const rows = await response.json();
+      if (Array.isArray(rows) && rows.length > 0 && Array.isArray(rows[0].record?.spares)) {
+        return rows[0].record.spares.filter((spare) => spare && spare.id);
+      }
+    }
+  } catch (error) {
+    // fall through to local copy
+  }
+  return readJson(SPARES_FILE, []);
+}
+
 async function persistSpareRecord(spare) {
   const config = getSupabaseConfig();
   if (config) {
@@ -370,7 +397,7 @@ async function persistSpareRecord(spare) {
 
     if (!savedToTable) {
       try {
-        const stored = readJson(SPARES_FILE, []);
+        const stored = await loadCatalogFromInquiries(config);
         const idx = stored.findIndex((s) => s.id === spare.id);
         const updatedCatalog = [...stored];
         if (idx === -1) {
@@ -422,7 +449,7 @@ async function deleteSpareRecord(id) {
 
     if (!deletedFromTable) {
       try {
-        const stored = readJson(SPARES_FILE, []).filter((s) => s.id !== id);
+        const stored = (await loadCatalogFromInquiries(config)).filter((s) => s.id !== id);
         const fallbackRow = {
           id: '__site_spares_catalog__',
           created_at: new Date().toISOString(),
@@ -685,8 +712,29 @@ async function uploadToCloudinary(buffer, fileName, settings) {
   }
 }
 
-function getAdminAuthSignature(secret, password) {
-  return crypto.createHmac('sha256', secret).update(`admin:${password}`).digest('hex');
+const ADMIN_AUTH_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
+
+function getAuthSecret() {
+  return process.env.SESSION_SECRET || 'cnc-spares-secret';
+}
+
+// Stateless signed token: "<expiryMs>.<hmac>". It does NOT depend on any stored
+// settings, memory session or /tmp file, so it stays valid on every serverless
+// instance (a cold start can no longer log the admin out).
+function createAdminAuthToken() {
+  const expiry = String(Date.now() + ADMIN_AUTH_MAX_AGE_MS);
+  const signature = crypto.createHmac('sha256', getAuthSecret()).update(`admin:${expiry}`).digest('hex');
+  return `${expiry}.${signature}`;
+}
+
+function verifyAdminAuthToken(token) {
+  if (!token || typeof token !== 'string') return false;
+  const [expiry, signature] = token.split('.');
+  if (!expiry || !signature || !/^\d+$/.test(expiry) || Number(expiry) < Date.now()) return false;
+  const expected = crypto.createHmac('sha256', getAuthSecret()).update(`admin:${expiry}`).digest('hex');
+  const a = Buffer.from(signature);
+  const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
 function parseCookies(cookieHeader) {
@@ -695,7 +743,8 @@ function parseCookies(cookieHeader) {
   cookieHeader.split(';').forEach((cookie) => {
     const parts = cookie.split('=');
     const name = parts.shift().trim();
-    const val = decodeURIComponent(parts.join('='));
+    let val = parts.join('=');
+    try { val = decodeURIComponent(val); } catch (e) { /* keep raw value */ }
     if (name) list[name] = val;
   });
   return list;
@@ -708,15 +757,7 @@ function isAdmin(req) {
 
   try {
     const cookies = parseCookies(req.headers.cookie);
-    const authCookie = cookies.cnc_admin_auth;
-    if (!authCookie) return false;
-
-    const secret = process.env.SESSION_SECRET || 'cnc-spares-secret';
-    const settings = readJson(SETTINGS_FILE, {});
-    const expectedPassword = getAdminPassword(settings);
-    const expectedSignature = getAdminAuthSignature(secret, expectedPassword);
-
-    if (authCookie === expectedSignature) {
+    if (verifyAdminAuthToken(cookies.cnc_admin_auth)) {
       if (req.session) {
         req.session.adminAuthenticated = true;
       }
@@ -1098,12 +1139,11 @@ app.post(['/Updates/login', '/updates/login', '/admin/login'], async (req, res) 
   const expectedPassword = getAdminPassword(settings);
   if (password === expectedPassword) {
     req.session.adminAuthenticated = true;
-    const secret = process.env.SESSION_SECRET || 'cnc-spares-secret';
-    const authSignature = getAdminAuthSignature(secret, expectedPassword);
-    res.cookie('cnc_admin_auth', authSignature, {
+    res.cookie('cnc_admin_auth', createAdminAuthToken(), {
       httpOnly: true,
-      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+      maxAge: ADMIN_AUTH_MAX_AGE_MS,
       sameSite: 'lax',
+      secure: req.secure,
       path: '/'
     });
     return res.redirect('/Updates');
@@ -1226,10 +1266,11 @@ app.post(['/Updates/settings', '/updates/settings', '/admin/settings'], handleUp
     cloudinaryUploadPreset: req.body.cloudinaryUploadPreset,
     cloudinaryFolder: req.body.cloudinaryFolder,
     companyLogoUrl: logoUrl,
-    companyLogoPublicId: logoPublicId,
-    supabaseUrl: req.body.supabaseUrl ? req.body.supabaseUrl.trim() : (current.supabaseUrl || ''),
-    supabaseKey: req.body.supabaseKey ? req.body.supabaseKey.trim() : (current.supabaseKey || '')
+    companyLogoPublicId: logoPublicId
   };
+  delete settings.supabaseUrl;
+  delete settings.supabaseKey;
+  delete settings.supabaseServiceRoleKey;
   await persistSettingsRecord(settings);
   res.redirect('/Updates/company');
 });
